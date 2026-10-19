@@ -1,0 +1,8 @@
+services:
+  placar-api:
+    build: .
+    ports:
+      - "5001:5000"
+    env_file:
+      - .env
+    restart: unless-stopped

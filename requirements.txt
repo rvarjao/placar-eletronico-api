@@ -1,0 +1,3 @@
+Flask>=3.0,<4
+gunicorn>=22,<25
+# TODO alunos: adicionar dependências do banco e dos testes.
