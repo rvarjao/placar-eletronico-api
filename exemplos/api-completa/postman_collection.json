@@ -1,0 +1,282 @@
+{
+  "info": {
+    "name": "Aula - API Placar (CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET listar",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/placares",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares"
+          ]
+        }
+      }
+    },
+    {
+      "name": "POST criar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome_equipe_a\": \"2º Ano A\",\n  \"nome_equipe_b\": \"2º Ano B\",\n  \"modalidade\": \"futsal\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) pm.collectionVariables.set('placar_id', pm.response.json().id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET consultar",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/placares/{{placar_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares",
+            "{{placar_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "PATCH alterar pontos",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares/{{placar_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares",
+            "{{placar_id}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pontos_a\": 2,\n  \"pontos_b\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PUT substituir",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares/{{placar_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares",
+            "{{placar_id}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome_equipe_a\": \"2º Ano A\",\n  \"nome_equipe_b\": \"2º Ano B\",\n  \"modalidade\": \"futsal\",\n  \"status\": \"em_andamento\",\n  \"pontos_a\": 3,\n  \"pontos_b\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE excluir",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares/{{placar_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares",
+            "{{placar_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/placares/9999",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares",
+            "9999"
+          ]
+        }
+      }
+    },
+    {
+      "name": "POST sem chave",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome_equipe_a\": \"2º Ano A\",\n  \"nome_equipe_b\": \"2º Ano B\",\n  \"modalidade\": \"futsal\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST inválido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/placares",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "placares"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"modalidade\": \"futsal\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:5000"
+    },
+    {
+      "key": "api_key",
+      "value": "chave-aula-123"
+    },
+    {
+      "key": "placar_id",
+      "value": "1"
+    }
+  ]
+}
