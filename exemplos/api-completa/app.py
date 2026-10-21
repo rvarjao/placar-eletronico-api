@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 ARQUIVO = Path(__file__).with_name("placares.json")
 LOCK = Lock()
-API_KEY = os.getenv("API_KEY", "chave-aula-123")  # Somente para aula local
+API_KEY = os.getenv("x-api-key", "chave-aula-123")  # Somente para aula local
 CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
