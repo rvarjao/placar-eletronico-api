@@ -8,6 +8,7 @@ Projeto didático de integração entre **Gerenciamento de Campeonatos** (client
 - [Guia da atividade](docs/guia-da-atividade.md)
 - [Contrato da API e exemplos JSON](docs/contrato-api.md)
 - [Integração via polling](docs/integracao.md)
+- [Exemplos de referência](exemplos/README.md): API completa, Placar Eletrônico (5001) e Gerenciador de Campeonato (5002)
 
 ## Estrutura
 - `app/routes/placares.py`: POST, GET e PATCH definidos, com TODOs.

@@ -12,7 +12,10 @@ CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
 def ler():
-    return json.loads(ARQUIVO.read_text(encoding="utf-8")) if ARQUIVO.exists() else []
+    placares = json.loads(ARQUIVO.read_text(encoding="utf-8")) if ARQUIVO.exists() else []
+    for placar in placares:
+        placar.setdefault("tempo_partida", 0)
+    return placares
 
 def salvar(placares):
     temporario = ARQUIVO.with_suffix(".tmp")
@@ -35,8 +38,20 @@ def validar_equipes(dados):
 def pontos_validos(dados):
     return all(isinstance(dados.get(c), int) and not isinstance(dados[c], bool) and dados[c] >= 0 for c in ("pontos_a", "pontos_b"))
 
+def tempo_valido(dados):
+    tempo = dados.get("tempo_partida")
+    return isinstance(tempo, int) and not isinstance(tempo, bool) and tempo >= 0
+
 @app.before_request
 def proteger_escrita():
+    app.logger.debug(
+        "Requisição recebida: método=%s, URL=%s, query=%s, formulário=%s, JSON=%s, cabeçalhos=%s",
+        request.method,
+        request.url,
+        request.query_string,
+        request.form,
+        request.headers
+     )
     if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("X-API-Key") != API_KEY:
         return erro("API Key ausente ou inválida", 401)
 
@@ -51,7 +66,7 @@ def consultar(id):
         placar = localizar(ler(), id)
     return (jsonify(placar), 200) if placar else erro("Placar não encontrado", 404)
 
-@app.post("/api/placares")
+@app.post("/api/placares/criar")
 def criar():
     dados = request.get_json(silent=True)
     mensagem = validar_equipes(dados)
@@ -60,7 +75,7 @@ def criar():
     with LOCK:
         placares = ler()
         id = max((p["id"] for p in placares), default=0) + 1
-        placar = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": "aguardando", "pontos_a": 0, "pontos_b": 0}
+        placar = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": "aguardando", "pontos_a": 0, "pontos_b": 0, "tempo_partida": 0}
         placares.append(placar)
         salvar(placares)
     return jsonify(placar), 201, {"Location": f"/api/placares/{id}"}
@@ -71,14 +86,14 @@ def substituir(id):
     mensagem = validar_equipes(dados)
     if mensagem:
         return erro(mensagem, 400)
-    if not pontos_validos(dados) or dados.get("status") not in STATUS:
-        return erro("Informe status válido e pontos_a/pontos_b inteiros não negativos", 400)
+    if not pontos_validos(dados) or not tempo_valido(dados) or dados.get("status") not in STATUS:
+        return erro("Informe status válido, pontos_a/pontos_b e tempo_partida como inteiros não negativos", 400)
     with LOCK:
         placares = ler()
         atual = localizar(placares, id)
         if atual is None:
             return erro("Placar não encontrado", 404)
-        novo = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": dados["status"], "pontos_a": dados["pontos_a"], "pontos_b": dados["pontos_b"]}
+        novo = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": dados["status"], "pontos_a": dados["pontos_a"], "pontos_b": dados["pontos_b"], "tempo_partida": dados["tempo_partida"]}
         placares[placares.index(atual)] = novo
         salvar(placares)
     return jsonify(novo), 200
@@ -86,14 +101,16 @@ def substituir(id):
 @app.patch("/api/placares/<int:id>")
 def alterar(id):
     dados = request.get_json(silent=True)
-    permitidos = {"pontos_a", "pontos_b", "status"}
+    permitidos = {"pontos_a", "pontos_b", "status", "tempo_partida"}
     if not isinstance(dados, dict) or not dados or set(dados) - permitidos:
-        return erro("Envie apenas pontos_a, pontos_b e/ou status", 400)
+        return erro("Envie apenas pontos_a, pontos_b, status e/ou tempo_partida", 400)
     for campo in ("pontos_a", "pontos_b"):
         if campo in dados and (not isinstance(dados[campo], int) or isinstance(dados[campo], bool) or dados[campo] < 0):
             return erro(f"{campo} deve ser inteiro não negativo", 400)
     if "status" in dados and dados["status"] not in STATUS:
         return erro("Status inválido", 400)
+    if "tempo_partida" in dados and not tempo_valido(dados):
+        return erro("tempo_partida deve ser inteiro não negativo", 400)
     with LOCK:
         placares = ler()
         placar = localizar(placares, id)

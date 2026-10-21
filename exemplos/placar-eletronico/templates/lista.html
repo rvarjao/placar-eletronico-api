@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Placar Eletrônico</h1>
+<p class="info">Placares criados pelo sistema de Campeonatos (ou via POST /api/placares).</p>
+<table>
+  <thead><tr><th>ID</th><th>Partida</th><th>Modalidade</th><th>Status</th><th>Placar</th><th>Tempo</th><th></th></tr></thead>
+  <tbody id="linhas"></tbody>
+</table>
+{% endblock %}
+{% block script %}
+<script>
+  async function atualizar() {
+    const placares = await (await fetch("/api/placares")).json();
+    document.getElementById("linhas").innerHTML = placares.map(p => `
+      <tr>
+        <td>${p.id}</td>
+        <td>${esc(p.nome_equipe_a)} x ${esc(p.nome_equipe_b)}</td>
+        <td>${esc(p.modalidade)}</td>
+        <td>${p.status}</td>
+        <td>${p.pontos_equipe_a} x ${p.pontos_equipe_b}</td>
+        <td>${mmss(p.tempo)}</td>
+        <td><a href="/operador/${p.id}">operar</a> · <a href="/placar/${p.id}" target="_blank">telão</a></td>
+      </tr>`).join("");
+  }
+  atualizar();
+  setInterval(atualizar, 3000);
+</script>
+{% endblock %}

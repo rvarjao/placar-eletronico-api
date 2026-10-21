@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Placar Eletrônico{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #111827; color: #f9fafb; }
+    main { max-width: 960px; margin: 0 auto; padding: 16px; }
+    a { color: #93c5fd; }
+    button { font-size: 1rem; padding: 8px 14px; border: 0; border-radius: 6px; cursor: pointer; background: #374151; color: #f9fafb; }
+    button:hover { background: #4b5563; }
+    button.verde { background: #15803d; } button.amarelo { background: #a16207; } button.vermelho { background: #b91c1c; }
+    input, select { font-size: 1rem; padding: 6px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: #f9fafb; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; border-bottom: 1px solid #374151; text-align: left; }
+    .placar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; text-align: center; }
+    .nome { font-size: 1.5rem; font-weight: 600; }
+    .pontos { font-size: 5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .relogio { font-size: 3rem; font-variant-numeric: tabular-nums; color: #fbbf24; }
+    .info { color: #9ca3af; }
+    .erro { color: #fca5a5; min-height: 1.5em; }
+    .controles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0; }
+  </style>
+</head>
+<body>
+<main>
+{% block conteudo %}{% endblock %}
+</main>
+<script>
+  // Utilitários compartilhados pelas telas
+  const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  function mmss(segundos) {
+    const m = String(Math.floor(segundos / 60)).padStart(2, "0");
+    const s = String(segundos % 60).padStart(2, "0");
+    return `${m}:${s}`;
+  }
+  async function buscarPlacar(id) {
+    const resposta = await fetch(`/api/placares/${id}`);
+    if (!resposta.ok) throw new Error((await resposta.json()).erro);
+    return resposta.json();
+  }
+</script>
+{% block script %}{% endblock %}
+</body>
+</html>

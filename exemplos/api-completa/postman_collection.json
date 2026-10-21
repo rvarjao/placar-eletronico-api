@@ -86,7 +86,7 @@
       }
     },
     {
-      "name": "PATCH alterar pontos",
+      "name": "PATCH alterar pontos e tempo",
       "request": {
         "method": "PATCH",
         "header": [
@@ -112,7 +112,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"pontos_a\": 2,\n  \"pontos_b\": 1\n}",
+          "raw": "{\n  \"pontos_a\": 2,\n  \"pontos_b\": 1,\n  \"tempo_partida\": 125\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -148,7 +148,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nome_equipe_a\": \"2º Ano A\",\n  \"nome_equipe_b\": \"2º Ano B\",\n  \"modalidade\": \"futsal\",\n  \"status\": \"em_andamento\",\n  \"pontos_a\": 3,\n  \"pontos_b\": 1\n}",
+          "raw": "{\n  \"nome_equipe_a\": \"2º Ano A\",\n  \"nome_equipe_b\": \"2º Ano B\",\n  \"modalidade\": \"futsal\",\n  \"status\": \"em_andamento\",\n  \"pontos_a\": 3,\n  \"pontos_b\": 1,\n  \"tempo_partida\": 125\n}",
           "options": {
             "raw": {
               "language": "json"

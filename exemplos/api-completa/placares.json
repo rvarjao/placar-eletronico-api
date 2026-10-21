@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "id": 1,
+    "nome_equipe_a": "2º Ano A",
+    "nome_equipe_b": "2º Ano B",
+    "modalidade": "futsal",
+    "status": "em_andamento",
+    "pontos_a": 2,
+    "pontos_b": 1,
+    "tempo_partida": 0
+  },
+  {
+    "id": 2,
+    "nome_equipe_a": "Corinthians",
+    "nome_equipe_b": "Santos",
+    "modalidade": "Futebol",
+    "status": "aguardando",
+    "pontos_a": 0,
+    "pontos_b": 0,
+    "tempo_partida": 0
+  }
+]

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block titulo %}Operador — Placar {{ id }}{% endblock %}
+{% block conteudo %}
+<p><a href="/">← placares</a> · <a href="/placar/{{ id }}" target="_blank">abrir telão</a></p>
+<p>
+  <label>API Key: <input type="password" id="chave" placeholder="X-API-Key"></label>
+  <span class="info">(guardada só nesta aba do navegador)</span>
+</p>
+<p class="info" style="text-align:center"><span id="modalidade"></span> · <span id="status"></span></p>
+<div class="placar">
+  <div>
+    <div class="nome" id="nome_a"></div>
+    <div class="pontos" id="pontos_a">0</div>
+    <div class="controles" id="botoes_a"></div>
+    <div class="controles">
+      <span id="extra_a"></span>
+      <button data-falta="a" data-delta="1">+ falta</button>
+      <button data-falta="a" data-delta="-1">− falta</button>
+    </div>
+  </div>
+  <div>
+    <div class="relogio" id="relogio">00:00</div>
+    <div class="controles">
+      <button class="verde" data-status="em_andamento">▶ Iniciar</button>
+      <button class="amarelo" data-status="pausado">⏸ Pausar</button>
+    </div>
+    <div class="controles">
+      <input id="etapa" size="10"><button id="salvar_etapa">Etapa</button>
+    </div>
+    <div class="controles">
+      <input id="tempo" size="5" placeholder="mm:ss"><button id="salvar_tempo">Ajustar tempo</button>
+    </div>
+    <div class="controles" id="area_set" hidden><button id="fechar_set">Fechar set</button></div>
+    <div class="controles"><button class="vermelho" id="finalizar">■ Finalizar partida</button></div>
+  </div>
+  <div>
+    <div class="nome" id="nome_b"></div>
+    <div class="pontos" id="pontos_b">0</div>
+    <div class="controles" id="botoes_b"></div>
+    <div class="controles">
+      <span id="extra_b"></span>
+      <button data-falta="b" data-delta="1">+ falta</button>
+      <button data-falta="b" data-delta="-1">− falta</button>
+    </div>
+  </div>
+</div>
+<p class="erro" id="erro"></p>
+{% endblock %}
+{% block script %}
+<script>
+  const ID = {{ id }};
+  const chave = document.getElementById("chave");
+  let atual = null;
+
+  try { chave.value = sessionStorage.getItem("api_key") || ""; } catch {}
+  chave.addEventListener("change", () => { try { sessionStorage.setItem("api_key", chave.value); } catch {} });
+
+  function mostrarErro(texto) { document.getElementById("erro").textContent = texto; }
+
+  async function enviar(alteracoes) {
+    const resposta = await fetch(`/api/placares/${ID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-API-Key": chave.value },
+      body: JSON.stringify(alteracoes),
+    });
+    const corpo = await resposta.json();
+    if (!resposta.ok) return mostrarErro(`${resposta.status}: ${corpo.erro}`);
+    mostrarErro("");
+    desenhar(corpo);
+  }
+
+  function desenhar(p) {
+    const primeiraVez = atual === null;
+    atual = p;
+    for (const [campo, valor] of Object.entries({
+      modalidade: p.modalidade, status: p.status.replace("_", " "),
+      nome_a: p.nome_equipe_a, nome_b: p.nome_equipe_b,
+      pontos_a: p.pontos_equipe_a, pontos_b: p.pontos_equipe_b, relogio: mmss(p.tempo),
+    })) document.getElementById(campo).textContent = valor;
+    const volei = p.modalidade === "volei";
+    document.getElementById("extra_a").textContent = volei ? `sets: ${p.detalhes.sets_equipe_a}` : `faltas: ${p.faltas_equipe_a}`;
+    document.getElementById("extra_b").textContent = volei ? `sets: ${p.detalhes.sets_equipe_b}` : `faltas: ${p.faltas_equipe_b}`;
+    document.getElementById("area_set").hidden = !volei;
+    if (primeiraVez) {
+      document.getElementById("etapa").value = p.etapa;
+      criarBotoesPontos(p.modalidade);
+    }
+    document.querySelectorAll("button").forEach(b => b.disabled = p.status === "finalizado");
+  }
+
+  // Interface genérica com uma especialização simples: basquete marca 1, 2 ou 3 pontos
+  function criarBotoesPontos(modalidade) {
+    const valores = modalidade === "basquete" ? [1, 2, 3, -1] : [1, -1];
+    for (const lado of ["a", "b"]) {
+      const area = document.getElementById(`botoes_${lado}`);
+      for (const v of valores) {
+        const botao = document.createElement("button");
+        botao.textContent = v > 0 ? `+${v}` : `${v}`;
+        botao.className = v > 0 ? "verde" : "";
+        botao.onclick = () => {
+          const campo = `pontos_equipe_${lado}`;
+          enviar({ [campo]: Math.max(0, atual[campo] + v) });
+        };
+        area.appendChild(botao);
+      }
+    }
+  }
+
+  document.querySelectorAll("[data-falta]").forEach(b => b.onclick = () => {
+    const campo = `faltas_equipe_${b.dataset.falta}`;
+    enviar({ [campo]: Math.max(0, atual[campo] + Number(b.dataset.delta)) });
+  });
+  document.querySelectorAll("[data-status]").forEach(b => b.onclick = () => enviar({ status: b.dataset.status }));
+  document.getElementById("salvar_etapa").onclick = () => enviar({ etapa: document.getElementById("etapa").value });
+  document.getElementById("salvar_tempo").onclick = () => {
+    const [m, s] = document.getElementById("tempo").value.split(":").map(Number);
+    if (Number.isInteger(m) && Number.isInteger(s ?? 0)) enviar({ tempo: m * 60 + (s ?? 0) });
+    else mostrarErro("Tempo no formato mm:ss");
+  };
+  document.getElementById("fechar_set").onclick = () => {
+    const { pontos_equipe_a: a, pontos_equipe_b: b, detalhes: d } = atual;
+    if (a === b) return mostrarErro("Set empatado: não há vencedor");
+    const sets = { ...d, [a > b ? "sets_equipe_a" : "sets_equipe_b"]: d[a > b ? "sets_equipe_a" : "sets_equipe_b"] + 1 };
+    const proximo = sets.sets_equipe_a + sets.sets_equipe_b + 1;
+    enviar({ detalhes: sets, pontos_equipe_a: 0, pontos_equipe_b: 0, etapa: `${proximo}º set` });
+    document.getElementById("etapa").value = `${proximo}º set`;
+  };
+  document.getElementById("finalizar").onclick = () => {
+    if (confirm("Finalizar a partida? Depois disso o placar não pode mais ser alterado.")) enviar({ status: "finalizado" });
+  };
+
+  async function atualizar() {
+    try { desenhar(await buscarPlacar(ID)); }
+    catch (e) { mostrarErro(`Falha ao consultar: ${e.message}`); }
+  }
+  atualizar();
+  setInterval(atualizar, 1000);
+</script>
+{% endblock %}

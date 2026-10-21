@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Telão — Placar {{ id }}{% endblock %}
+{% block conteudo %}
+<p class="info" style="text-align:center"><span id="modalidade"></span> · <span id="etapa"></span> · <span id="status"></span></p>
+<div class="placar">
+  <div><div class="nome" id="nome_a"></div><div class="pontos" id="pontos_a">0</div><div class="info" id="extra_a"></div></div>
+  <div class="relogio" id="relogio">00:00</div>
+  <div><div class="nome" id="nome_b"></div><div class="pontos" id="pontos_b">0</div><div class="info" id="extra_b"></div></div>
+</div>
+<p class="erro" id="erro"></p>
+{% endblock %}
+{% block script %}
+<script>
+  const ID = {{ id }};
+  async function atualizar() {
+    try {
+      const p = await buscarPlacar(ID);
+      for (const [campo, valor] of Object.entries({
+        modalidade: p.modalidade, etapa: p.etapa, status: p.status.replace("_", " "),
+        nome_a: p.nome_equipe_a, nome_b: p.nome_equipe_b,
+        pontos_a: p.pontos_equipe_a, pontos_b: p.pontos_equipe_b, relogio: mmss(p.tempo),
+      })) document.getElementById(campo).textContent = valor;
+      const volei = p.modalidade === "volei";
+      document.getElementById("extra_a").textContent = volei ? `sets: ${p.detalhes.sets_equipe_a ?? 0}` : `faltas: ${p.faltas_equipe_a}`;
+      document.getElementById("extra_b").textContent = volei ? `sets: ${p.detalhes.sets_equipe_b ?? 0}` : `faltas: ${p.faltas_equipe_b}`;
+      document.getElementById("erro").textContent = "";
+    } catch (e) {
+      document.getElementById("erro").textContent = `Falha ao consultar: ${e.message}`;
+    }
+  }
+  atualizar();
+  setInterval(atualizar, 1000);
+</script>
+{% endblock %}

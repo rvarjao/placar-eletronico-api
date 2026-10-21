@@ -28,4 +28,16 @@ API: `http://127.0.0.1:5000`. Importe `postman_collection.json` no Postman.
 
 O Postman usa as variáveis `base_url`, `api_key` e `placar_id`.
 
+## Tempo da partida
+
+Cada placar possui `tempo_partida`, em segundos decorridos. Ele começa em `0` e pode ser atualizado com `PATCH`:
+
+```json
+{
+  "tempo_partida": 125
+}
+```
+
+O cliente pode exibi-lo como `02:05`. Em um `PUT`, informe também `tempo_partida`.
+
 **Atenção:** `chave-aula-123` é uma chave pública e didática, nunca de produção. Configure `API_KEY` por variável de ambiente em sistemas reais. O JSON é apenas para aprendizado, sem suporte a concorrência entre processos.

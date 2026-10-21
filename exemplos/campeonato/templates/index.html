@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gerenciador de Campeonato</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+    main { max-width: 1000px; margin: 0 auto; padding: 16px; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    input, select, textarea, button { font-size: 1rem; padding: 6px; }
+    textarea { width: 100%; box-sizing: border-box; }
+    .info { color: #64748b; }
+    .erro { color: #b91c1c; }
+    .tag { padding: 2px 8px; border-radius: 999px; font-size: .85rem; background: #e2e8f0; }
+    .em_acompanhamento { background: #fef3c7; } .encerrada { background: #dcfce7; } .erro_placar { background: #fee2e2; }
+  </style>
+</head>
+<body>
+<main>
+  <h1 id="titulo">Gerenciador de Campeonato</h1>
+
+  <section>
+    <h2>Novo campeonato</h2>
+    <p><label>Nome <input id="nome" value="Interclasse 2026"></label>
+       <label>Modalidade
+         <select id="modalidade">
+           <option>futsal</option><option>futebol</option><option>basquete</option>
+           <option>volei</option><option>handebol</option><option>outro</option>
+         </select>
+       </label></p>
+    <p><label>Equipes (uma por linha)<br><textarea id="equipes" rows="4">1º Ano A
+1º Ano B
+2º Ano A
+2º Ano B</textarea></label></p>
+    <button id="criar">Gerar partidas</button>
+    <span class="info">Substitui o campeonato atual.</span>
+    <p class="erro" id="erro"></p>
+  </section>
+
+  <section>
+    <h2>Partidas</h2>
+    <p class="info">O servidor consulta o Placar Eletrônico a cada poucos segundos enquanto a partida está em acompanhamento.</p>
+    <table>
+      <thead><tr><th>#</th><th>Partida</th><th>Situação</th><th>Placar</th><th>Ações</th></tr></thead>
+      <tbody id="partidas"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Classificação</h2>
+    <table>
+      <thead><tr><th>Equipe</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>Pró</th><th>Contra</th><th>Saldo</th></tr></thead>
+      <tbody id="classificacao"></tbody>
+    </table>
+  </section>
+</main>
+<script>
+  const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const mmss = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  const mostrarErro = t => document.getElementById("erro").textContent = t;
+
+  async function chamar(url, opcoes = {}) {
+    const resposta = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opcoes });
+    const corpo = await resposta.json();
+    if (!resposta.ok) { mostrarErro(`${resposta.status}: ${corpo.erro}`); return null; }
+    mostrarErro("");
+    return corpo;
+  }
+
+  function descreverPlacar(p, modalidade) {
+    if (p.resultado) return `<strong>${p.resultado.pontos_a} x ${p.resultado.pontos_b}</strong>${modalidade === "volei" ? " (sets)" : ""}`;
+    if (!p.placar) return "—";
+    const extra = modalidade === "volei" ? ` · sets ${p.placar.detalhes.sets_equipe_a}x${p.placar.detalhes.sets_equipe_b}` : "";
+    return `${p.placar.pontos_equipe_a} x ${p.placar.pontos_equipe_b} <span class="info">(${esc(p.placar.status)} · ${esc(p.placar.etapa)} · ${mmss(p.placar.tempo)}${extra})</span>`;
+  }
+
+  async function atualizar() {
+    const c = await chamar("/api/campeonato");
+    if (!c) return;
+    document.getElementById("titulo").textContent = c.nome ? `${c.nome} — ${c.modalidade}` : "Gerenciador de Campeonato";
+    document.getElementById("partidas").innerHTML = c.partidas.map(p => `
+      <tr>
+        <td>${p.id}</td>
+        <td>${esc(p.equipe_a)} x ${esc(p.equipe_b)}</td>
+        <td><span class="tag ${p.status}">${p.status.replace("_", " ")}</span>
+            ${p.placar_id ? `<span class="info">placar #${p.placar_id}</span>` : ""}
+            ${p.ultimo_erro ? `<div class="erro">${esc(p.ultimo_erro)}</div>` : ""}</td>
+        <td>${descreverPlacar(p, c.modalidade)}</td>
+        <td>${p.placar_id === null
+              ? `<button onclick="iniciar(${p.id})">Criar placar</button>`
+              : `<a href="${esc(c.placar_url)}/operador/${p.placar_id}" target="_blank">operar</a> ·
+                 <a href="${esc(c.placar_url)}/placar/${p.placar_id}" target="_blank">telão</a>
+                 ${p.status === "em_acompanhamento" ? `· <button onclick="sincronizar(${p.id})">consultar agora</button>` : ""}`}</td>
+      </tr>`).join("");
+    document.getElementById("classificacao").innerHTML = c.classificacao.map(l => `
+      <tr><td>${esc(l.equipe)}</td><td><strong>${l.pontos}</strong></td><td>${l.jogos}</td><td>${l.vitorias}</td>
+          <td>${l.empates}</td><td>${l.derrotas}</td><td>${l.marcados}</td><td>${l.sofridos}</td><td>${l.saldo}</td></tr>`).join("");
+  }
+
+  async function iniciar(id) { if (await chamar(`/api/partidas/${id}/iniciar`, { method: "POST" })) atualizar(); }
+  async function sincronizar(id) { if (await chamar(`/api/partidas/${id}/sincronizar`, { method: "POST" })) atualizar(); }
+
+  document.getElementById("criar").onclick = async () => {
+    const corpo = {
+      nome: document.getElementById("nome").value,
+      modalidade: document.getElementById("modalidade").value,
+      equipes: document.getElementById("equipes").value.split("\n").map(e => e.trim()).filter(Boolean),
+    };
+    if (await chamar("/api/campeonato", { method: "POST", body: JSON.stringify(corpo) })) atualizar();
+  };
+
+  // A tela consulta o backend do Campeonato (não o placar diretamente)
+  atualizar();
+  setInterval(atualizar, 2000);
+</script>
+</body>
+</html>
