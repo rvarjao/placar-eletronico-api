@@ -1,7 +1,17 @@
 # Exemplos
 
-- [api-completa](api-completa/README.md): CRUD didático de placares (Flask + JSON).
-- [placar-eletronico](placar-eletronico/README.md): ponta do Placar, porta 5001 — API do contrato, operador e telão.
-- [campeonato](campeonato/README.md): ponta do Campeonato, porta 5002 — gera partidas, cria placares e acompanha resultados por polling.
+- [api-completa](api-completa/README.md): API publicada, painel administrativo, grupos, tokens e monitoramento.
+- [placar-eletronico](placar-eletronico/README.md): placar local didático, porta 5001, operador e telão.
+- [campeonato](campeonato/README.md): gerenciador que pode usar a API publicada com token de grupo ou o placar local.
 
-Para ver a integração, rode o placar-eletronico e depois o campeonato, cada um em um terminal.
+## Testar um token de grupo
+
+Configure no exemplo de campeonato:
+
+```bash
+export PLACAR_URL="https://rvarjao.pythonanywhere.com"
+export PLACAR_TOKEN="COLE_AQUI_O_TOKEN_DO_GRUPO"
+python exemplos/campeonato/app.py
+```
+
+O token é enviado pelo backend no cabeçalho `Authorization: Bearer`. Nunca coloque o token no JavaScript do navegador ou em um commit.
