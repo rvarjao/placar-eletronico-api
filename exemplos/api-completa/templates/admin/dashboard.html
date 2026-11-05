@@ -1,0 +1,67 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Monitoramento da API</h1>
+
+<section class="cards">
+  <div class="card"><span class="rotulo">Grupos ativos</span><strong>{{ resumo.grupos_ativos }}</strong></div>
+  <div class="card"><span class="rotulo">Requisições hoje</span><strong>{{ resumo.requisicoes_hoje }}</strong></div>
+  <div class="card"><span class="rotulo">Erros hoje</span><strong>{{ resumo.erros_hoje }}</strong></div>
+  <div class="card"><span class="rotulo">Nunca conectaram</span><strong>{{ resumo.nunca_conectaram }}</strong></div>
+</section>
+
+<h2>Requisições por método</h2>
+<div class="metodos">
+  {% for item in metodos %}
+    <span class="metodo"><strong>{{ item.metodo }}</strong> {{ item.total }}</span>
+  {% else %}
+    <span class="rotulo">Nenhuma requisição registrada.</span>
+  {% endfor %}
+</div>
+
+<h2>Uso por grupo</h2>
+<section class="painel">
+  <table>
+    <thead><tr><th>Grupo</th><th>Turma</th><th>Situação</th><th>Requisições</th><th>Erros</th><th>Primeira conexão</th><th>Última conexão</th></tr></thead>
+    <tbody>
+    {% for grupo in grupos %}
+      <tr>
+        <td><strong>{{ grupo.nome }}</strong></td>
+        <td>{{ grupo.turma or "—" }}</td>
+        <td>
+          {% if grupo.ultima_requisicao %}<span class="status ok">Conectado</span>
+          {% else %}<span class="status">Aguardando</span>{% endif %}
+        </td>
+        <td>{{ grupo.total_requisicoes }}</td>
+        <td>{{ grupo.total_erros or 0 }}</td>
+        <td>{{ grupo.primeira_requisicao or "—" }}</td>
+        <td>{{ grupo.ultima_requisicao or "—" }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7">Cadastre o primeiro grupo para começar.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<h2>100 requisições mais recentes</h2>
+<section class="painel">
+  <table>
+    <thead><tr><th>Data</th><th>Grupo</th><th>Método</th><th>Rota</th><th>Status</th><th>Duração</th></tr></thead>
+    <tbody>
+    {% for item in recentes %}
+      <tr>
+        <td>{{ item.criado_em }}</td>
+        <td>{{ item.grupo }}</td>
+        <td><strong>{{ item.metodo }}</strong></td>
+        <td><code>{{ item.rota }}</code></td>
+        <td><span class="status {{ 'ok' if item.status < 400 else 'erro' }}">{{ item.status }}</span></td>
+        <td>{{ item.duracao_ms }} ms</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">Nenhuma requisição registrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
