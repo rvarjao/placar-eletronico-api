@@ -7,6 +7,15 @@ O exemplo aceita dois modos:
 - **API publicada** — usa o token do grupo em `Authorization: Bearer`.
 - **Placar local** — mantém a compatibilidade com `X-API-Key` e o exemplo da porta 5001.
 
+## Configurar pela tela
+
+No servidor publicado (`/exemplos/campeonato/`), o administrador informa o token em **Configurar Campeonato** (`/configuracao`); veja o passo a passo em [exemplos](../README.md#configurar-o-token-pela-tela). A tela também aceita:
+
+- **Endereço da API** — em branco, a API é o próprio servidor (chamada interna, sem rede).
+- **Telas do Placar Eletrônico** — endereço base para os links *operar* e *telão* de cada partida (no servidor publicado, `/exemplos/placar-eletronico`).
+
+O que for salvo na tela tem prioridade sobre as variáveis de ambiente abaixo. Sem token, o Campeonato avisa que a conexão não está configurada em vez de tentar criar placares.
+
 ## Usar com a API publicada
 
 No Linux ou macOS:
@@ -59,8 +68,9 @@ Sem `PLACAR_TOKEN`, o exemplo usa `http://127.0.0.1:5001`, a rota local `POST /a
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `PLACAR_URL` | `http://127.0.0.1:5001` | endereço da API |
+| `PLACAR_URL` | `http://127.0.0.1:5001` (este servidor, quando publicado) | endereço da API |
 | `PLACAR_TOKEN` | vazio | token do grupo para a API publicada |
+| `PLACAR_TELAS_URL` | vazio | endereço das telas de operador e telão (links na tabela de partidas) |
 | `PLACAR_API_KEY` | `chave-aula-123` | chave didática usada apenas no modo local |
 | `PLACAR_CREATE_PATH` | automático | `/api/placares/criar` com token ou `/api/placares` no modo local |
 | `INTERVALO_POLLING` | `5` | segundos entre consultas |

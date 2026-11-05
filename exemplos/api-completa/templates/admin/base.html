@@ -55,6 +55,8 @@
       <nav>
         <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('admin.grupos') }}">Grupos e tokens</a>
+        <a href="/exemplos/campeonato/configuracao">Configurar Campeonato</a>
+        <a href="/exemplos/placar-eletronico/configuracao">Configurar Placar Eletrônico</a>
       </nav>
       <form method="post" action="{{ url_for('admin.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

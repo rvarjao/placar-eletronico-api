@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conexão com a API — Campeonato</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+    main { max-width: 720px; margin: 0 auto; padding: 16px; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    label { display: grid; gap: 4px; margin-bottom: 12px; color: #475569; font-size: .9rem; }
+    input, button { font-size: 1rem; padding: 8px; }
+    input { border: 1px solid #cbd5e1; border-radius: 6px; }
+    button { border: 0; border-radius: 6px; background: #1d4ed8; color: #fff; cursor: pointer; }
+    button.secundario { background: #475569; }
+    button.perigo { background: #b91c1c; }
+    .info { color: #64748b; }
+    .erro { color: #b91c1c; }
+    .aviso { padding: 10px 12px; border-radius: 6px; }
+    .aviso.ok { background: #dcfce7; color: #166534; }
+    .aviso.erro { background: #fee2e2; color: #991b1b; }
+    .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    form { margin: 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p><a href="{{ request.script_root }}/">← Gerenciador de Campeonato</a></p>
+  <h1>Conexão com a API</h1>
+
+  {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
+    <p class="aviso {{ categoria }}">{{ mensagem }}</p>
+  {% endfor %}
+
+  <section>
+    <h2>Situação</h2>
+    <p>API: <strong>{{ destino }}</strong></p>
+    <p>Token do grupo:
+      {% if tem_token %}<strong>configurado</strong> (<code>{{ prefixo }}…</code>)
+      {% else %}<strong class="erro">não configurado</strong>{% endif %}
+    </p>
+    <form method="post" action="{{ request.script_root }}/configuracao/testar">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="secundario" type="submit">Testar conexão</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Configurar</h2>
+    <form method="post" action="{{ request.script_root }}/configuracao">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Token do grupo
+        <input type="password" name="token" autocomplete="off"
+               placeholder="{{ 'em branco mantém o token atual' if tem_token else 'cole aqui o token do grupo' }}">
+      </label>
+      <label>Endereço da API (opcional)
+        <input name="url" value="{{ url }}" placeholder="em branco = este servidor">
+      </label>
+      <label>Telas do Placar Eletrônico (opcional)
+        <input name="telas_url" value="{{ telas_url }}" placeholder="/exemplos/placar-eletronico">
+      </label>
+      <div class="acoes"><button type="submit">Salvar e testar</button></div>
+    </form>
+    {% if tem_token %}
+    <form method="post" action="{{ request.script_root }}/configuracao/remover-token" style="margin-top:12px"
+          onsubmit="return confirm('Remover o token salvo?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="perigo" type="submit">Remover token</button>
+    </form>
+    {% endif %}
+    <p class="info">O token fica guardado no servidor e é enviado só pelo backend; ele nunca é mostrado de novo nesta tela.
+      {% if grupos_url %}Gere ou consulte tokens em <a href="{{ grupos_url }}">Grupos e tokens</a>.{% endif %}</p>
+  </section>
+</main>
+</body>
+</html>

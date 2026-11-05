@@ -128,8 +128,16 @@ def contexto_admin():
     return {"csrf_token": token_csrf}
 
 
+def destino_seguro(destino):
+    """Aceita só caminhos deste mesmo site (ex.: /exemplos/campeonato/configuracao)."""
+    if destino.startswith("/") and not destino.startswith("//") and "\\" not in destino:
+        return destino
+    return ""
+
+
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
+    proximo = destino_seguro(request.values.get("next", ""))
     if request.method == "POST":
         usuario_esperado = os.getenv("ADMIN_USERNAME", "admin")
         senha_esperada = os.getenv("ADMIN_PASSWORD", "")
@@ -145,11 +153,11 @@ def login():
             session.clear()
             session["admin_autenticado"] = True
             token_csrf()
-            return redirect(url_for("admin.dashboard"))
+            return redirect(proximo or url_for("admin.dashboard"))
 
         flash("Usuário ou senha inválidos.", "erro")
 
-    return render_template("admin/login.html")
+    return render_template("admin/login.html", proximo=proximo)
 
 
 @admin_bp.post("/logout")

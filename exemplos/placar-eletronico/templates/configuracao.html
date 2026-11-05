@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Conexão com a API — Placar Eletrônico{% endblock %}
+{% block conteudo %}
+<p><a href="{{ request.script_root }}/">← placares</a></p>
+<h1>Conexão com a API</h1>
+
+{% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
+  <p style="padding:10px 12px;border-radius:6px;background:{{ '#14532d' if categoria == 'ok' else '#7f1d1d' }}">{{ mensagem }}</p>
+{% endfor %}
+
+<h2>Situação</h2>
+<p>API: <strong>{{ destino }}</strong></p>
+<p>Token do grupo:
+  {% if tem_token %}<strong>configurado</strong> (<code>{{ prefixo }}…</code>)
+  {% else %}<strong style="color:#fca5a5">não configurado</strong>{% endif %}
+</p>
+<form method="post" action="{{ request.script_root }}/configuracao/testar">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit">Testar conexão</button>
+</form>
+
+<h2>Configurar</h2>
+<form method="post" action="{{ request.script_root }}/configuracao" style="display:grid;gap:12px;max-width:520px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="info">Token do grupo
+    <input type="password" name="token" autocomplete="off" style="width:100%;box-sizing:border-box"
+           placeholder="{{ 'em branco mantém o token atual' if tem_token else 'cole aqui o token do grupo' }}">
+  </label>
+  <label class="info">Endereço da API (opcional)
+    <input name="url" value="{{ url }}" placeholder="em branco = este servidor" style="width:100%;box-sizing:border-box">
+  </label>
+  <div><button class="verde" type="submit">Salvar e testar</button></div>
+</form>
+{% if tem_token %}
+<form method="post" action="{{ request.script_root }}/configuracao/remover-token" style="margin-top:12px"
+      onsubmit="return confirm('Remover o token salvo?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button class="vermelho" type="submit">Remover token</button>
+</form>
+{% endif %}
+<p class="info">O token fica guardado no servidor e é enviado só pelo backend; ele nunca é mostrado de novo nesta tela.
+  {% if grupos_url %}Gere ou consulte tokens em <a href="{{ grupos_url }}">Grupos e tokens</a>.{% endif %}</p>
+{% endblock %}

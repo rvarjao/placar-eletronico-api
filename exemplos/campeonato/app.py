@@ -1,22 +1,38 @@
+import hmac
 import json
 import os
+import secrets
 import time
+from functools import wraps
 from itertools import combinations
 from pathlib import Path
 from threading import Lock, Thread
+from urllib.parse import urlencode
+
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, flash, jsonify, redirect, render_template, request, session
 
 app = Flask(__name__)
+# Necessário para a sessão da tela de configuração. No servidor principal este valor é
+# substituído pela SECRET_KEY dele, o que permite reaproveitar o login do administrador.
+app.secret_key = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
 ARQUIVO = Path(__file__).with_name("campeonato.json")
+CONEXAO_ARQUIVO = Path(__file__).with_name("conexao_api.json")  # token salvo pela tela; fica fora do git
 LOCK = Lock()
-PLACAR_URL = os.getenv("PLACAR_URL", "http://127.0.0.1:5001").rstrip("/")
+
+# Valores iniciais da conexão (variáveis de ambiente). O que for salvo na tela de
+# configuração tem prioridade sobre eles.
+PLACAR_URL = os.getenv("PLACAR_URL", "").strip().rstrip("/")
 PLACAR_TOKEN = os.getenv("PLACAR_TOKEN", "").strip()
+PLACAR_TELAS_URL = os.getenv("PLACAR_TELAS_URL", "").strip().rstrip("/")
+URL_LOCAL_PADRAO = "http://127.0.0.1:5001"
 PLACAR_API_KEY = os.getenv("PLACAR_API_KEY", "chave-aula-123").strip()
-PLACAR_CREATE_PATH = os.getenv(
-    "PLACAR_CREATE_PATH",
-    "/api/placares/criar" if PLACAR_TOKEN else "/api/placares",
-).strip()
+PLACAR_CREATE_PATH = os.getenv("PLACAR_CREATE_PATH", "").strip()
+
+# Definidos pelo servidor principal quando este sistema roda dentro dele:
+API_INTERNA = None      # aplicação Flask da API: chamadas feitas em processo, sem passar pela rede
+ADMIN_LOGIN_URL = os.getenv("ADMIN_LOGIN_URL", "")  # vazio = tela de configuração aberta (uso local)
+
 INTERVALO_POLLING = int(os.getenv("INTERVALO_POLLING", "5"))
 TIMEOUT = 3
 MODALIDADES = {"futebol", "futsal", "basquete", "volei", "handebol", "outro"}
@@ -83,11 +99,87 @@ def resultado_final(placar, modalidade):
 
 # ---------- Integração com o Placar Eletrônico ----------
 
-def cabecalhos_placar():
-    """Bearer identifica o grupo na API publicada; X-API-Key mantém o exemplo local compatível."""
-    if PLACAR_TOKEN:
-        return {"Authorization": f"Bearer {PLACAR_TOKEN}"}
-    return {"X-API-Key": PLACAR_API_KEY}
+class ApiIndisponivel(Exception):
+    """A API não respondeu (rede, timeout ou servidor fora do ar)."""
+
+
+def ler_arquivo_conexao():
+    try:
+        dados = json.loads(CONEXAO_ARQUIVO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def ler_conexao():
+    """Conexão efetiva: valores salvos na tela de configuração sobre os padrões do ambiente."""
+    conexao = {"url": PLACAR_URL, "token": PLACAR_TOKEN, "telas_url": PLACAR_TELAS_URL}
+    salvo = ler_arquivo_conexao()
+    for chave in conexao:
+        if isinstance(salvo.get(chave), str):
+            conexao[chave] = salvo[chave].strip().rstrip("/")
+    return conexao
+
+
+def salvar_conexao(dados):
+    temporario = CONEXAO_ARQUIVO.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        os.chmod(temporario, 0o600)  # o arquivo guarda o token: só o dono lê
+    except OSError:
+        pass
+    temporario.replace(CONEXAO_ARQUIVO)
+
+
+def destino_api(conexao):
+    """URL base da API, ou None quando a API roda neste mesmo servidor (chamada em processo)."""
+    if conexao["url"]:
+        return conexao["url"]
+    return None if API_INTERNA is not None else URL_LOCAL_PADRAO
+
+
+def descrever_destino(conexao):
+    return destino_api(conexao) or "este servidor"
+
+
+def caminho_criacao(conexao):
+    if PLACAR_CREATE_PATH:
+        return PLACAR_CREATE_PATH
+    return "/api/placares/criar" if conexao["token"] else "/api/placares"
+
+
+def token_obrigatorio(conexao):
+    """Dentro do servidor principal a API exige o token do grupo; sem ele nenhuma chamada passa."""
+    return destino_api(conexao) is None and not conexao["token"]
+
+
+def chamar_api(metodo, caminho, corpo=None, conexao=None):
+    """Chama a API de placares. Retorna (status, json_ou_None, texto).
+
+    Bearer identifica o grupo na API publicada; X-API-Key mantém o placar local compatível.
+    No mesmo servidor a chamada é feita em processo: uma requisição HTTP para si mesmo
+    ficaria presa esperando o único processo atender."""
+    conexao = conexao or ler_conexao()
+    if conexao["token"]:
+        cabecalhos = {"Authorization": f"Bearer {conexao['token']}"}
+    else:
+        cabecalhos = {"X-API-Key": PLACAR_API_KEY}
+    destino = destino_api(conexao)
+    if destino is None:
+        from werkzeug.test import Client
+        resposta = Client(API_INTERNA, use_cookies=False).open(
+            caminho, method=metodo, json=corpo, headers=cabecalhos
+        )
+        return resposta.status_code, resposta.get_json(silent=True), resposta.get_data(as_text=True)
+    try:
+        resposta = requests.request(metodo, f"{destino}{caminho}", json=corpo, headers=cabecalhos, timeout=TIMEOUT)
+    except requests.RequestException as e:
+        raise ApiIndisponivel(e.__class__.__name__) from e
+    try:
+        dados = resposta.json()
+    except ValueError:
+        dados = None
+    return resposta.status_code, dados, resposta.text
 
 
 def normalizar_placar(placar):
@@ -106,21 +198,22 @@ def normalizar_placar(placar):
 
 def consultar_placar(placar_id):
     """Retorna (placar, mensagem_erro, deve_parar)."""
+    conexao = ler_conexao()
+    if token_obrigatorio(conexao):
+        return None, "Token da API não configurado; peça ao administrador para informá-lo na tela de configuração", False
     try:
-        resposta = requests.get(
-            f"{PLACAR_URL}/api/placares/{placar_id}",
-            headers=cabecalhos_placar(),
-            timeout=TIMEOUT,
-        )
-    except requests.RequestException as e:
-        return None, f"Placar indisponível ({e.__class__.__name__}); tentando novamente", False
-    if resposta.status_code == 404:
+        status, dados, _ = chamar_api("GET", f"/api/placares/{placar_id}", conexao=conexao)
+    except ApiIndisponivel as e:
+        return None, f"Placar indisponível ({e}); tentando novamente", False
+    if status == 404:
         return None, f"Placar {placar_id} não existe mais no servidor", True
-    if resposta.status_code >= 500:
-        return None, f"Placar respondeu {resposta.status_code}; tentando novamente", False
-    if resposta.status_code != 200:
-        return None, f"Resposta inesperada {resposta.status_code}", False
-    return normalizar_placar(resposta.json()), None, False
+    if status == 401:
+        return None, "A API recusou o token (401); confira a configuração", False
+    if status >= 500:
+        return None, f"Placar respondeu {status}; tentando novamente", False
+    if status != 200 or not isinstance(dados, dict):
+        return None, f"Resposta inesperada {status}", False
+    return normalizar_placar(dados), None, False
 
 def sincronizar_partida(partida, modalidade):
     placar, mensagem, parar = consultar_placar(partida["placar_id"])
@@ -162,11 +255,14 @@ def polling():
 def consultar():
     with LOCK:
         campeonato = ler()
+    conexao = ler_conexao()
     return jsonify({
         **campeonato,
         "classificacao": classificacao(campeonato),
-        "placar_url": PLACAR_URL,
-        "api_remota": bool(PLACAR_TOKEN),
+        "placar_url": destino_api(conexao) or "",
+        "telas_url": conexao["telas_url"],
+        "api_remota": bool(conexao["token"]),
+        "conexao": {"configurada": not token_obrigatorio(conexao), "destino": descrever_destino(conexao)},
     }), 200
 
 @app.post("/api/campeonato")
@@ -198,18 +294,17 @@ def iniciar_partida(id):
     if partida["placar_id"] is not None:
         return erro("Esta partida já possui placar", 409)
     corpo = {"nome_equipe_a": partida["equipe_a"], "nome_equipe_b": partida["equipe_b"], "modalidade": campeonato["modalidade"]}
+    conexao = ler_conexao()
+    if token_obrigatorio(conexao):
+        return erro("Token da API não configurado. O administrador precisa informá-lo na tela de configuração.", 409)
     try:
-        resposta = requests.post(
-            f"{PLACAR_URL}{PLACAR_CREATE_PATH}",
-            json=corpo,
-            headers=cabecalhos_placar(),
-            timeout=TIMEOUT,
-        )
-    except requests.RequestException as e:
-        return erro(f"Placar Eletrônico indisponível: {e.__class__.__name__}", 503)
-    if resposta.status_code != 201:
-        return erro(f"Placar recusou a criação ({resposta.status_code}): {resposta.text}", 502)
-    placar = resposta.json()
+        status, placar, texto = chamar_api("POST", caminho_criacao(conexao), corpo, conexao)
+    except ApiIndisponivel as e:
+        return erro(f"Placar Eletrônico indisponível: {e}", 503)
+    if status == 401:
+        return erro("A API recusou o token (401). Confira o token na tela de configuração.", 502)
+    if status != 201 or not isinstance(placar, dict) or "id" not in placar:
+        return erro(f"Placar recusou a criação ({status}): {texto[:200]}", 502)
     with LOCK:
         campeonato = ler()
         partida = localizar(campeonato["partidas"], id)
@@ -234,6 +329,105 @@ def sincronizar_agora(id):
 @app.get("/")
 def inicio():
     return render_template("index.html")
+
+# ---------- Tela de configuração da conexão com a API ----------
+
+def exige_admin(funcao):
+    """Dentro do servidor principal, só o administrador logado altera a conexão."""
+    @wraps(funcao)
+    def decorada(*args, **kwargs):
+        if ADMIN_LOGIN_URL and not session.get("admin_autenticado"):
+            proximo = urlencode({"next": request.script_root + request.path})
+            return redirect(f"{ADMIN_LOGIN_URL}?{proximo}")
+        return funcao(*args, **kwargs)
+    return decorada
+
+def token_csrf():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+
+def csrf_valido():
+    esperado = session.get("csrf_token", "")
+    return bool(esperado) and hmac.compare_digest(request.form.get("csrf_token", ""), esperado)
+
+def url_valida(valor, permitir_relativa=False):
+    if not valor:
+        return True
+    if permitir_relativa and valor.startswith("/") and not valor.startswith("//"):
+        return True
+    return valor.startswith(("http://", "https://"))
+
+def testar_conexao():
+    """Faz uma consulta simples à API com o token salvo. Retorna (ok, mensagem)."""
+    conexao = ler_conexao()
+    if token_obrigatorio(conexao):
+        return False, "Informe o token do grupo para conectar à API."
+    try:
+        status, _, _ = chamar_api("GET", "/api/placares", conexao=conexao)
+    except ApiIndisponivel as e:
+        return False, f"A API não respondeu ({e}). Confira o endereço."
+    if status == 200:
+        return True, f"Conexão OK: a API ({descrever_destino(conexao)}) aceitou o token."
+    if status == 401:
+        return False, "A API recusou o token (401). Confira o token do grupo no painel administrativo."
+    return False, f"Resposta inesperada da API: {status}."
+
+@app.get("/configuracao")
+@exige_admin
+def tela_configuracao():
+    conexao = ler_conexao()
+    return render_template(
+        "configuracao.html",
+        url=conexao["url"],
+        telas_url=conexao["telas_url"],
+        tem_token=bool(conexao["token"]),
+        prefixo=conexao["token"][:8],
+        destino=descrever_destino(conexao),
+        csrf_token=token_csrf(),
+        grupos_url="/admin/grupos" if ADMIN_LOGIN_URL else "",
+    )
+
+@app.post("/configuracao")
+@exige_admin
+def salvar_configuracao():
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    url = request.form.get("url", "").strip().rstrip("/")
+    telas_url = request.form.get("telas_url", "").strip().rstrip("/")
+    token = request.form.get("token", "").strip()
+    if not url_valida(url) or not url_valida(telas_url, permitir_relativa=True):
+        flash("Os endereços precisam começar com http:// ou https:// (as telas também aceitam um caminho como /exemplos/placar-eletronico).", "erro")
+        return redirect(request.script_root + "/configuracao")
+    salvo = ler_arquivo_conexao()
+    salvo["url"] = url
+    salvo["telas_url"] = telas_url
+    if token:  # campo em branco mantém o token atual
+        salvo["token"] = token
+    salvar_conexao(salvo)
+    ok, mensagem = testar_conexao()
+    flash(("Configuração salva. " if ok else "Configuração salva, mas: ") + mensagem, "ok" if ok else "erro")
+    return redirect(request.script_root + "/configuracao")
+
+@app.post("/configuracao/testar")
+@exige_admin
+def testar_configuracao():
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    ok, mensagem = testar_conexao()
+    flash(mensagem, "ok" if ok else "erro")
+    return redirect(request.script_root + "/configuracao")
+
+@app.post("/configuracao/remover-token")
+@exige_admin
+def remover_token():
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    salvo = ler_arquivo_conexao()
+    salvo["token"] = ""
+    salvar_conexao(salvo)
+    flash("Token removido.", "ok")
+    return redirect(request.script_root + "/configuracao")
 
 if __name__ == "__main__":
     Thread(target=polling, daemon=True).start()

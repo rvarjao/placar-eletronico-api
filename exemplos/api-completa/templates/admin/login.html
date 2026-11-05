@@ -5,6 +5,7 @@
   <h1>Área administrativa</h1>
   <p>Entre com as credenciais do professor para administrar grupos, tokens e requisições.</p>
   <form method="post">
+    {% if proximo %}<input type="hidden" name="next" value="{{ proximo }}">{% endif %}
     <label>Usuário
       <input name="usuario" autocomplete="username" required>
     </label>

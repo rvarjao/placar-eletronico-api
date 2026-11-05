@@ -267,15 +267,19 @@ def montar_exemplos():
         PROJECT_ROOT / "exemplos" / "campeonato" / "app.py",
     )
 
-    campeonato.PLACAR_URL = os.getenv(
-        "EXEMPLO_PLACAR_URL",
-        "https://rvarjao.pythonanywhere.com",
-    ).rstrip("/")
+    # Os dois sistemas continuam independentes: cada um guarda o próprio token, informado
+    # pelo administrador na tela /configuracao de cada um. Aqui só os ligamos a este servidor.
+    for exemplo in (placar, campeonato):
+        exemplo.API_INTERNA = app                    # API neste servidor: chamada em processo, sem HTTP
+        exemplo.ADMIN_LOGIN_URL = "/admin/login"     # a tela de configuração exige o admin deste painel
+        exemplo.app.secret_key = app.config["SECRET_KEY"]  # mesma chave: a sessão do admin vale nos três
+
+    # Sem endereço salvo na tela, a API é este servidor. As variáveis abaixo são opcionais.
+    campeonato.PLACAR_URL = os.getenv("EXEMPLO_PLACAR_URL", "").strip().rstrip("/")
     campeonato.PLACAR_TOKEN = os.getenv("EXEMPLO_PLACAR_TOKEN", "").strip()
-    campeonato.PLACAR_CREATE_PATH = os.getenv(
-        "EXEMPLO_PLACAR_CREATE_PATH",
-        "/api/placares/criar" if campeonato.PLACAR_TOKEN else "/api/placares/criar",
-    )
+    campeonato.PLACAR_TELAS_URL = os.getenv("EXEMPLO_PLACAR_TELAS_URL", "/exemplos/placar-eletronico")
+    placar.PLACAR_URL = ""
+    placar.PLACAR_TOKEN = ""
 
     if os.getenv("EXEMPLO_POLLING", "1") == "1":
         campeonato.Thread(target=campeonato.polling, daemon=True).start()

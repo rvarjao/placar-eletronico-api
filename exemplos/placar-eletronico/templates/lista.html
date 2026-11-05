@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block conteudo %}
 <h1>Placar Eletrônico</h1>
-<p class="info">Placares criados pelo sistema de Campeonatos (ou via POST /api/placares).</p>
+<p class="info">Placares da API (criados pelo sistema de Campeonatos ou diretamente por ela) ·
+  <a href="{{ request.script_root }}/configuracao">configurar conexão com a API</a></p>
+<p class="erro" id="erro"></p>
 <table>
   <thead><tr><th>ID</th><th>Partida</th><th>Modalidade</th><th>Status</th><th>Placar</th><th>Tempo</th><th></th></tr></thead>
   <tbody id="linhas"></tbody>
@@ -10,7 +12,14 @@
 {% block script %}
 <script>
   async function atualizar() {
-    const placares = await (await fetch(`${BASE_PATH}/api/placares`)).json();
+    const resposta = await fetch(`${BASE_PATH}/api/placares`);
+    const placares = await resposta.json();
+    if (!resposta.ok) {
+      document.getElementById("erro").textContent = placares.erro;
+      document.getElementById("linhas").innerHTML = "";
+      return;
+    }
+    document.getElementById("erro").textContent = "";
     document.getElementById("linhas").innerHTML = placares.map(p => `
       <tr>
         <td>${p.id}</td>
