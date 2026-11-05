@@ -1,0 +1,40 @@
+name: Deploy to PythonAnywhere
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pythonanywhere-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate deployment secrets
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
+        run: |
+          test -n "$PA_API_TOKEN" || { echo "Secret PA_API_TOKEN is missing"; exit 1; }
+          test -n "$PA_DEPLOY_TOKEN" || { echo "Secret PA_DEPLOY_TOKEN is missing"; exit 1; }
+
+      - name: Update source code on PythonAnywhere
+        env:
+          PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
+        run: |
+          curl             --fail-with-body             --silent             --show-error             --max-time 90             --request POST             --header "X-Deploy-Token: $PA_DEPLOY_TOKEN"             https://rvarjao.pythonanywhere.com/internal/deploy
+
+      - name: Reload PythonAnywhere web app
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+        run: |
+          curl             --fail-with-body             --silent             --show-error             --max-time 30             --request POST             --header "Authorization: Token $PA_API_TOKEN"             https://www.pythonanywhere.com/api/v0/user/rvarjao/webapps/rvarjao.pythonanywhere.com/reload/
