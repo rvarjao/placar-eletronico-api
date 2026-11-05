@@ -73,7 +73,10 @@
   function descreverPlacar(p, modalidade) {
     if (p.resultado) return `<strong>${p.resultado.pontos_a} x ${p.resultado.pontos_b}</strong>${modalidade === "volei" ? " (sets)" : ""}`;
     if (!p.placar) return "—";
-    const extra = modalidade === "volei" ? ` · sets ${p.placar.detalhes.sets_equipe_a}x${p.placar.detalhes.sets_equipe_b}` : "";
+    const sets = p.placar.detalhes || {};
+    const extra = modalidade === "volei" && ("sets_equipe_a" in sets)
+      ? ` · sets ${sets.sets_equipe_a}x${sets.sets_equipe_b}`
+      : "";
     return `${p.placar.pontos_equipe_a} x ${p.placar.pontos_equipe_b} <span class="info">(${esc(p.placar.status)} · ${esc(p.placar.etapa)} · ${mmss(p.placar.tempo)}${extra})</span>`;
   }
 
@@ -91,9 +94,11 @@
         <td>${descreverPlacar(p, c.modalidade)}</td>
         <td>${p.placar_id === null
               ? `<button onclick="iniciar(${p.id})">Criar placar</button>`
-              : `<a href="${esc(c.placar_url)}/operador/${p.placar_id}" target="_blank">operar</a> ·
-                 <a href="${esc(c.placar_url)}/placar/${p.placar_id}" target="_blank">telão</a>
-                 ${p.status === "em_acompanhamento" ? `· <button onclick="sincronizar(${p.id})">consultar agora</button>` : ""}`}</td>
+              : c.api_remota
+                ? `${p.status === "em_acompanhamento" ? `<button onclick="sincronizar(${p.id})">consultar agora</button>` : "resultado sincronizado"}`
+                : `<a href="${esc(c.placar_url)}/operador/${p.placar_id}" target="_blank">operar</a> ·
+                   <a href="${esc(c.placar_url)}/placar/${p.placar_id}" target="_blank">telão</a>
+                   ${p.status === "em_acompanhamento" ? `· <button onclick="sincronizar(${p.id})">consultar agora</button>` : ""}`}</td>
       </tr>`).join("");
     document.getElementById("classificacao").innerHTML = c.classificacao.map(l => `
       <tr><td>${esc(l.equipe)}</td><td><strong>${l.pontos}</strong></td><td>${l.jogos}</td><td>${l.vitorias}</td>
