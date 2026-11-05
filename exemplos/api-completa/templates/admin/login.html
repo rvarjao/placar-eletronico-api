@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% block title %}Entrar{% endblock %}
+{% block content %}
+<section class="login painel">
+  <h1>Área administrativa</h1>
+  <p>Entre com as credenciais do professor para administrar grupos, tokens e requisições.</p>
+  <form method="post">
+    <label>Usuário
+      <input name="usuario" autocomplete="username" required>
+    </label>
+    <label>Senha
+      <input type="password" name="senha" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Entrar</button>
+  </form>
+</section>
+{% endblock %}
