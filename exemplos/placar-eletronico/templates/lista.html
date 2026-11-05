@@ -10,7 +10,7 @@
 {% block script %}
 <script>
   async function atualizar() {
-    const placares = await (await fetch("/api/placares")).json();
+    const placares = await (await fetch(`${BASE_PATH}/api/placares`)).json();
     document.getElementById("linhas").innerHTML = placares.map(p => `
       <tr>
         <td>${p.id}</td>
@@ -19,7 +19,7 @@
         <td>${p.status}</td>
         <td>${p.pontos_equipe_a} x ${p.pontos_equipe_b}</td>
         <td>${mmss(p.tempo)}</td>
-        <td><a href="/operador/${p.id}">operar</a> · <a href="/placar/${p.id}" target="_blank">telão</a></td>
+        <td><a href="${BASE_PATH}/operador/${p.id}">operar</a> · <a href="${BASE_PATH}/placar/${p.id}" target="_blank">telão</a></td>
       </tr>`).join("");
   }
   atualizar();
