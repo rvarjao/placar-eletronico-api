@@ -29,6 +29,7 @@
 </main>
 <script>
   // Utilitários compartilhados pelas telas
+  const BASE_PATH = {{ request.script_root|tojson }};
   const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   function mmss(segundos) {
     const m = String(Math.floor(segundos / 60)).padStart(2, "0");
@@ -36,7 +37,7 @@
     return `${m}:${s}`;
   }
   async function buscarPlacar(id) {
-    const resposta = await fetch(`/api/placares/${id}`);
+    const resposta = await fetch(`${BASE_PATH}/api/placares/${id}`);
     if (!resposta.ok) throw new Error((await resposta.json()).erro);
     return resposta.json();
   }
