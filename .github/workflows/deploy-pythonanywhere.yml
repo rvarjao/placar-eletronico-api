@@ -30,7 +30,6 @@ jobs:
 
       - name: Update source code on PythonAnywhere
         env:
-          APP_API_KEY: ${{ secrets.APP_API_KEY }}
           PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
         run: |
           curl --fail-with-body --silent --show-error --max-time 90 --request POST --header "X-Deploy-Token: $PA_DEPLOY_TOKEN" https://rvarjao.pythonanywhere.com/internal/deploy
