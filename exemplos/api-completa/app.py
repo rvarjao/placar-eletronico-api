@@ -2,11 +2,19 @@ import hmac
 import json
 import os
 import subprocess
+import sqlite3
 from pathlib import Path
 from threading import Lock
-from flask import Flask, jsonify, request
+from time import perf_counter
+
+from flask import Flask, g, jsonify, request
+
+from admin_panel import admin_bp, autenticar_token, inicializar_banco, registrar_requisicao
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
+app.register_blueprint(admin_bp)
+inicializar_banco()
 ARQUIVO = Path(__file__).with_name("placares.json")
 LOCK = Lock()
 API_KEY = os.getenv("x-api-key", "chave-aula-123")  # Somente para aula local
@@ -47,17 +55,45 @@ def tempo_valido(dados):
     return isinstance(tempo, int) and not isinstance(tempo, bool) and tempo >= 0
 
 @app.before_request
-def proteger_escrita():
-    app.logger.debug(
-        "Requisição recebida: método=%s, URL=%s, query=%s, formulário=%s, JSON=%s, cabeçalhos=%s",
-        request.method,
-        request.url,
-        request.query_string,
-        request.form,
-        request.headers
-     )
-    if request.path != "/internal/deploy" and request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("X-API-Key") != API_KEY:
-        return erro("API Key ausente ou inválida", 401)
+def autenticar_requisicao():
+    g.inicio_requisicao = perf_counter()
+    g.grupo_api_id = None
+
+    if not request.path.startswith("/api/"):
+        return None
+
+    autorizacao = request.headers.get("Authorization", "")
+    token = autorizacao.removeprefix("Bearer ").strip() if autorizacao.startswith("Bearer ") else ""
+    grupo = autenticar_token(token)
+
+    if grupo is not None:
+        g.grupo_api_id = grupo["id"]
+        g.grupo_api_nome = grupo["nome"]
+        return None
+
+    chave_legada = request.headers.get("X-API-Key", "")
+    if chave_legada and hmac.compare_digest(chave_legada, API_KEY):
+        return None
+
+    return erro("Token do grupo ausente ou inválido", 401)
+
+
+@app.after_request
+def monitorar_requisicao(resposta):
+    if request.path.startswith("/api/"):
+        inicio = getattr(g, "inicio_requisicao", perf_counter())
+        duracao_ms = max(0, round((perf_counter() - inicio) * 1000))
+        try:
+            registrar_requisicao(
+                getattr(g, "grupo_api_id", None),
+                request.method,
+                request.path,
+                resposta.status_code,
+                duracao_ms,
+            )
+        except sqlite3.Error:
+            app.logger.exception("Não foi possível registrar a requisição da API")
+    return resposta
 
 @app.post("/internal/deploy")
 def deploy():
