@@ -210,9 +210,11 @@ def excluir(id):
 def carregar_exemplo(nome, caminho):
     """Carrega uma aplicação Flask de exemplo sem exigir nomes de pacotes válidos."""
     import importlib.util
+    import sys
 
     especificacao = importlib.util.spec_from_file_location(nome, caminho)
     modulo = importlib.util.module_from_spec(especificacao)
+    sys.modules[nome] = modulo
     especificacao.loader.exec_module(modulo)
     return modulo
 
