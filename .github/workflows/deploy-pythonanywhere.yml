@@ -22,17 +22,20 @@ jobs:
     steps:
       - name: Validate deployment secrets
         env:
+          APP_API_KEY: ${{ secrets.APP_API_KEY }}
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
           PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
         run: |
+          test -n "$APP_API_KEY" || { echo "Secret APP_API_KEY is missing"; exit 1; }
           test -n "$PA_API_TOKEN" || { echo "Secret PA_API_TOKEN is missing"; exit 1; }
           test -n "$PA_DEPLOY_TOKEN" || { echo "Secret PA_DEPLOY_TOKEN is missing"; exit 1; }
 
       - name: Update source code on PythonAnywhere
         env:
+          APP_API_KEY: ${{ secrets.APP_API_KEY }}
           PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
         run: |
-          curl --fail-with-body --silent --show-error --max-time 90 --request POST --header "X-Deploy-Token: $PA_DEPLOY_TOKEN" https://rvarjao.pythonanywhere.com/internal/deploy
+          curl --fail-with-body --silent --show-error --max-time 90 --request POST --header "X-API-Key: $APP_API_KEY" --header "X-Deploy-Token: $PA_DEPLOY_TOKEN" https://rvarjao.pythonanywhere.com/internal/deploy
 
       - name: Reload PythonAnywhere web app
         env:
