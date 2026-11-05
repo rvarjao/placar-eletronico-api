@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Operador — Placar {{ id }}{% endblock %}
 {% block conteudo %}
-<p><a href="/">← placares</a> · <a href="/placar/{{ id }}" target="_blank">abrir telão</a></p>
+<p><a href="{{ request.script_root }}/">← placares</a> · <a href="{{ request.script_root }}/placar/{{ id }}" target="_blank">abrir telão</a></p>
 <p>
   <label>API Key: <input type="password" id="chave" placeholder="X-API-Key"></label>
   <span class="info">(guardada só nesta aba do navegador)</span>
@@ -58,7 +58,7 @@
   function mostrarErro(texto) { document.getElementById("erro").textContent = texto; }
 
   async function enviar(alteracoes) {
-    const resposta = await fetch(`/api/placares/${ID}`, {
+    const resposta = await fetch(`${BASE_PATH}/api/placares/${ID}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-API-Key": chave.value },
       body: JSON.stringify(alteracoes),
