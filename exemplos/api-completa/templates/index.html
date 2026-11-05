@@ -20,6 +20,7 @@
     <nav aria-label="Navegação principal">
       <a href="#sobre">O projeto</a>
       <a href="#jornada">Jornada</a>
+      <a href="#exemplos">Exemplos</a>
       <a href="#equipes">Equipes</a>
       <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
     </nav>
@@ -63,6 +64,28 @@
         <li><b>03</b><div><h3>Evolução</h3><p>Aprimoramentos, testes, integração das funcionalidades e evidências do funcionamento.</p></div></li>
         <li><b>04</b><div><h3>Apresentação final</h3><p>Sistema concluído, demonstração prática e conversa sobre o que foi aprendido.</p></div></li>
       </ol>
+    </section>
+
+    <section class="teams" id="exemplos" aria-labelledby="exemplos-title">
+      <div class="section-heading">
+        <p class="eyebrow">Demonstrações</p>
+        <h2 id="exemplos-title">Veja os sistemas funcionando.</h2>
+        <p class="section-note">Exemplos didáticos publicados no PythonAnywhere.</p>
+      </div>
+      <div class="team-grid">
+        <article class="team-card live">
+          <div class="team-top"><span>Exemplo 01</span><span class="status">Disponível</span></div>
+          <h3>Gerenciador de Campeonato</h3>
+          <p>Cadastre equipes, gere partidas, crie placares e acompanhe a classificação.</p>
+          <a href="/exemplos/campeonato/" target="_blank" rel="noopener">Abrir exemplo <span>↗</span></a>
+        </article>
+        <article class="team-card live">
+          <div class="team-top"><span>Exemplo 02</span><span class="status">Disponível</span></div>
+          <h3>Placar Eletrônico</h3>
+          <p>Placar local didático com operador, telão e API própria.</p>
+          <a href="/exemplos/placar-eletronico/" target="_blank" rel="noopener">Abrir exemplo <span>↗</span></a>
+        </article>
+      </div>
     </section>
 
     <section class="teams" id="equipes" aria-labelledby="equipes-title">
