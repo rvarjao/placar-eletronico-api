@@ -8,6 +8,7 @@ from threading import Lock
 from time import perf_counter
 
 from flask import Flask, g, jsonify, render_template, request
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from admin_panel import admin_bp, autenticar_token, inicializar_banco, registrar_requisicao
 
@@ -205,6 +206,51 @@ def excluir(id):
         placares.remove(placar)
         salvar(placares)
     return "", 204
+
+def carregar_exemplo(nome, caminho):
+    """Carrega uma aplicação Flask de exemplo sem exigir nomes de pacotes válidos."""
+    import importlib.util
+
+    especificacao = importlib.util.spec_from_file_location(nome, caminho)
+    modulo = importlib.util.module_from_spec(especificacao)
+    especificacao.loader.exec_module(modulo)
+    return modulo
+
+
+def montar_exemplos():
+    placar = carregar_exemplo(
+        "placar_eletronico_exemplo",
+        PROJECT_ROOT / "exemplos" / "placar-eletronico" / "app.py",
+    )
+    campeonato = carregar_exemplo(
+        "campeonato_exemplo",
+        PROJECT_ROOT / "exemplos" / "campeonato" / "app.py",
+    )
+
+    campeonato.PLACAR_URL = os.getenv(
+        "EXEMPLO_PLACAR_URL",
+        "https://rvarjao.pythonanywhere.com",
+    ).rstrip("/")
+    campeonato.PLACAR_TOKEN = os.getenv("EXEMPLO_PLACAR_TOKEN", "").strip()
+    campeonato.PLACAR_CREATE_PATH = os.getenv(
+        "EXEMPLO_PLACAR_CREATE_PATH",
+        "/api/placares/criar" if campeonato.PLACAR_TOKEN else "/api/placares/criar",
+    )
+
+    if os.getenv("EXEMPLO_POLLING", "1") == "1":
+        campeonato.Thread(target=campeonato.polling, daemon=True).start()
+
+    return DispatcherMiddleware(
+        app.wsgi_app,
+        {
+            "/exemplos/campeonato": campeonato.app,
+            "/exemplos/placar-eletronico": placar.app,
+        },
+    )
+
+
+app.wsgi_app = montar_exemplos()
+
 
 if __name__ == "__main__":
     app.run(debug=True)
