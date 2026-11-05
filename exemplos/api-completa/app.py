@@ -7,7 +7,7 @@ from pathlib import Path
 from threading import Lock
 from time import perf_counter
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, render_template, request
 
 from admin_panel import admin_bp, autenticar_token, inicializar_banco, registrar_requisicao
 
@@ -94,6 +94,11 @@ def monitorar_requisicao(resposta):
         except sqlite3.Error:
             app.logger.exception("Não foi possível registrar a requisição da API")
     return resposta
+
+@app.get("/")
+def inicio():
+    return render_template("index.html")
+
 
 @app.post("/internal/deploy")
 def deploy():
