@@ -1,5 +1,7 @@
+import hmac
 import json
 import os
+import subprocess
 from pathlib import Path
 from threading import Lock
 from flask import Flask, jsonify, request
@@ -8,6 +10,8 @@ app = Flask(__name__)
 ARQUIVO = Path(__file__).with_name("placares.json")
 LOCK = Lock()
 API_KEY = os.getenv("x-api-key", "chave-aula-123")  # Somente para aula local
+DEPLOY_TOKEN = os.getenv("DEPLOY_TOKEN", "")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
@@ -52,8 +56,38 @@ def proteger_escrita():
         request.form,
         request.headers
      )
-    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("X-API-Key") != API_KEY:
+    if request.path != "/internal/deploy" and request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("X-API-Key") != API_KEY:
         return erro("API Key ausente ou inválida", 401)
+
+@app.post("/internal/deploy")
+def deploy():
+    token_recebido = request.headers.get("X-Deploy-Token", "")
+
+    if not DEPLOY_TOKEN:
+        return erro("DEPLOY_TOKEN não configurado", 503)
+
+    if not hmac.compare_digest(token_recebido, DEPLOY_TOKEN):
+        return erro("Token de deploy inválido", 401)
+
+    resultado = subprocess.run(
+        ["git", "pull", "--ff-only", "origin", "main"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    saida = "\n".join(
+        parte
+        for parte in (resultado.stdout.strip(), resultado.stderr.strip())
+        if parte
+    )
+
+    if resultado.returncode != 0:
+        return jsonify({"erro": "Falha ao atualizar o repositório", "saida": saida}), 500
+
+    return jsonify({"status": "updated", "saida": saida}), 200
+
 
 @app.get("/api/placares")
 def listar():
