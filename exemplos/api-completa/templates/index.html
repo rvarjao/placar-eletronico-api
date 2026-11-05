@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Projeto Interclasse 2026 — Colégio Sinerge">
+  <title>Projeto Interclasse 2026 | Colégio Sinerge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#inicio" aria-label="Projeto Interclasse 2026">
+      <img src="https://colegiosinerge.com.br/wp-content/uploads/2026/06/Colegio-Sinerge-2.png" alt="Colégio Sinerge">
+      <span></span>
+      <strong>Projeto<br>Interclasse</strong>
+    </a>
+    <nav aria-label="Navegação principal">
+      <a href="#sobre">O projeto</a>
+      <a href="#jornada">Jornada</a>
+      <a href="#equipes">Equipes</a>
+      <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
+    </nav>
+  </header>
+
+  <main id="inicio">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Colégio Sinerge · Desenvolvimento de Sistemas</p>
+        <h1 id="hero-title">Tecnologia<br><em>entra em jogo.</em></h1>
+        <p class="lead">No Projeto Interclasse, as equipes criam sistemas para organizar partidas, registrar placares e aproximar a escola do esporte com tecnologia feita por estudantes.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#equipes">Conheça as equipes <span aria-hidden="true">↓</span></a>
+          <a class="button text" href="#sobre">Como funciona</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="court-lines"></div>
+        <div class="score-card"><small>INTERCLASSE</small><b>2026</b><i></i></div>
+        <div class="ball ball-one"></div><div class="ball ball-two"></div><div class="ball ball-three"></div>
+        <p>Aprender<br>fazendo.</p>
+      </div>
+    </section>
+
+    <section class="intro" id="sobre" aria-labelledby="sobre-title">
+      <div><p class="eyebrow">Uma experiência prática</p><h2 id="sobre-title">Projeto, código<br>e colaboração.</h2></div>
+      <div class="intro-copy"><p>O Projeto Interclasse convida estudantes do 2º ano de Desenvolvimento de Sistemas a transformar necessidades reais de um campeonato escolar em produtos digitais.</p><p>Cada equipe escolhe uma modalidade e desenvolve uma solução para o dia a dia do torneio: placar, chaveamento, classificação, agenda ou estatísticas.</p></div>
+    </section>
+
+    <section class="pilares" aria-label="Pilares do projeto">
+      <article><span>01</span><h3>Planejar</h3><p>Identificar o problema, definir funcionalidades e desenhar a experiência.</p></article>
+      <article><span>02</span><h3>Construir</h3><p>Programar interfaces e regras de negócio, usando Git e GitHub no processo.</p></article>
+      <article><span>03</span><h3>Apresentar</h3><p>Demonstrar a solução, explicar as escolhas e compartilhar a evolução do projeto.</p></article>
+    </section>
+
+    <section class="timeline" id="jornada" aria-labelledby="jornada-title">
+      <div class="section-heading"><p class="eyebrow">Caminho do projeto</p><h2 id="jornada-title">Da ideia à quadra.</h2></div>
+      <ol>
+        <li><b>01</b><div><h3>Planejamento</h3><p>Objetivos, funcionalidades, tecnologias, telas e organização da equipe.</p></div></li>
+        <li><b>02</b><div><h3>Protótipo funcional</h3><p>Primeira versão navegável, com as funcionalidades principais já em desenvolvimento.</p></div></li>
+        <li><b>03</b><div><h3>Evolução</h3><p>Aprimoramentos, testes, integração das funcionalidades e evidências do funcionamento.</p></div></li>
+        <li><b>04</b><div><h3>Apresentação final</h3><p>Sistema concluído, demonstração prática e conversa sobre o que foi aprendido.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="teams" id="equipes" aria-labelledby="equipes-title">
+      <div class="section-heading"><p class="eyebrow">Projetos das turmas</p><h2 id="equipes-title">Acompanhe as equipes.</h2><p class="section-note">Os links serão ativados assim que cada projeto estiver publicado.</p></div>
+      <div class="team-grid">
+        <article class="team-card live"><div class="team-top"><span>Equipe 01</span><span class="status">Em desenvolvimento</span></div><h3>Associação U.C.</h3><p>Organização e acompanhamento do vôlei de praia.</p><a href="https://github.com/rodriguesdesahellen44-cmd/placar.volei" target="_blank" rel="noopener">Ver repositório <span>↗</span></a></article>
+        <article class="team-card"><div class="team-top"><span>Equipe 02</span><span class="status">Aguardando publicação</span></div><h3>Placar de vôlei de praia</h3><p>Placar digital e gestão de partidas.</p><button type="button" disabled>Link em breve</button></article>
+        <article class="team-card"><div class="team-top"><span>Equipe 03</span><span class="status">Aguardando publicação</span></div><h3>Chaveamento</h3><p>Organização de confrontos para o torneio.</p><button type="button" disabled>Link em breve</button></article>
+        <article class="team-card live"><div class="team-top"><span>Equipe 06</span><span class="status">Em desenvolvimento</span></div><h3>Arena</h3><p>Campeonato, placares e classificação.</p><a href="https://github.com/valada0/arena" target="_blank" rel="noopener">Ver repositório <span>↗</span></a></article>
+        <article class="team-card"><div class="team-top"><span>Projeto individual</span><span class="status">Aguardando publicação</span></div><h3>Interclasse Interativo</h3><p>Calendário, resultados e área administrativa.</p><button type="button" disabled>Link em breve</button></article>
+        <article class="team-card live"><div class="team-top"><span>Equipe 06</span><span class="status">Em desenvolvimento</span></div><h3>Mesa Pro</h3><p>Gerenciador de Interclasse de vôlei de mesa.</p><a href="https://github.com/KellEze/MEsa-pro" target="_blank" rel="noopener">Ver repositório <span>↗</span></a></article>
+      </div>
+    </section>
+  </main>
+  <footer><a href="https://colegiosinerge.com.br/" target="_blank" rel="noopener"><img src="https://colegiosinerge.com.br/wp-content/uploads/2026/06/Colegio-Sinerge-2.png" alt="Colégio Sinerge"></a><p>Projeto Interclasse 2026 · Desenvolvimento de Sistemas</p><a href="#inicio">Voltar ao topo ↑</a></footer>
+</body>
+</html>
