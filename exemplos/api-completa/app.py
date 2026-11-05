@@ -1,8 +1,10 @@
+import hashlib
 import hmac
 import json
 import os
 import subprocess
 import sqlite3
+import sys
 from pathlib import Path
 from threading import Lock
 from time import perf_counter
@@ -21,6 +23,8 @@ LOCK = Lock()
 API_KEY = os.getenv("x-api-key", "chave-aula-123")  # Somente para aula local
 DEPLOY_TOKEN = os.getenv("DEPLOY_TOKEN", "")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+REQUIREMENTS = Path(__file__).with_name("requirements.txt")
+REQUIREMENTS_STAMP = Path(__file__).with_name(".requirements.sha256")
 CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
@@ -101,6 +105,36 @@ def inicio():
     return render_template("index.html")
 
 
+def instalar_dependencias():
+    """Instala o requirements.txt no virtualenv do app quando ele mudou desde a última instalação."""
+    if not REQUIREMENTS.exists():
+        return {"erro": False, "saida": "requirements.txt não encontrado"}
+
+    atual = hashlib.sha256(REQUIREMENTS.read_bytes()).hexdigest()
+    instalado = REQUIREMENTS_STAMP.read_text().strip() if REQUIREMENTS_STAMP.exists() else ""
+    if atual == instalado:
+        return {"erro": False, "saida": "dependências já atualizadas"}
+
+    # sys.prefix aponta para o virtualenv; sys.executable pode ser o binário do uWSGI
+    python = Path(sys.prefix) / "bin" / "python"
+    try:
+        pip = subprocess.run(
+            [str(python), "-m", "pip", "install", "--disable-pip-version-check", "-r", str(REQUIREMENTS)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {"erro": True, "saida": f"{e.__class__.__name__}: {e}"}
+
+    if pip.returncode != 0:
+        return {"erro": True, "saida": (pip.stderr.strip() or pip.stdout.strip())[-2000:]}
+
+    REQUIREMENTS_STAMP.write_text(atual)
+    return {"erro": False, "saida": "dependências instaladas"}
+
+
 @app.post("/internal/deploy")
 def deploy():
     token_recebido = request.headers.get("X-Deploy-Token", "")
@@ -128,7 +162,11 @@ def deploy():
     if resultado.returncode != 0:
         return jsonify({"erro": "Falha ao atualizar o repositório", "saida": saida}), 500
 
-    return jsonify({"status": "updated", "saida": saida}), 200
+    dependencias = instalar_dependencias()
+    if dependencias["erro"]:
+        return jsonify({"erro": "Falha ao instalar dependências", "saida": saida, "dependencias": dependencias["saida"]}), 500
+
+    return jsonify({"status": "updated", "saida": saida, "dependencias": dependencias["saida"]}), 200
 
 
 @app.get("/api/placares")

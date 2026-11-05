@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 .venv/
 exemplos/api-completa/monitoramento.db
+exemplos/api-completa/.requirements.sha256
