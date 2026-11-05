@@ -58,12 +58,13 @@
   </section>
 </main>
 <script>
+  const BASE_PATH = {{ request.script_root|tojson }};
   const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const mmss = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const mostrarErro = t => document.getElementById("erro").textContent = t;
 
   async function chamar(url, opcoes = {}) {
-    const resposta = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opcoes });
+    const resposta = await fetch(`${BASE_PATH}${url}`, { headers: { "Content-Type": "application/json" }, ...opcoes });
     const corpo = await resposta.json();
     if (!resposta.ok) { mostrarErro(`${resposta.status}: ${corpo.erro}`); return null; }
     mostrarErro("");
