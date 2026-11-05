@@ -1,55 +1,105 @@
 # Exemplo — Gerenciador de Campeonato (porta 5002)
 
-A outra ponta do projeto. Cadastra equipes, gera as partidas (todos contra todos), cria um placar no [Placar Eletrônico](../placar-eletronico/README.md) para cada partida, acompanha por **polling** e monta a classificação com os resultados. Persistência em `campeonato.json` (criado automaticamente). Este sistema **nunca acessa os dados do placar diretamente**, apenas a API HTTP.
+Cadastra equipes, gera partidas, cria placares por API HTTP, acompanha os resultados por polling e monta a classificação. Os dados locais do campeonato ficam em `campeonato.json`.
 
-## Executar
+O exemplo aceita dois modos:
 
-Com o Placar Eletrônico já rodando na porta 5001:
+- **API publicada** — usa o token do grupo em `Authorization: Bearer`.
+- **Placar local** — mantém a compatibilidade com `X-API-Key` e o exemplo da porta 5001.
+
+## Usar com a API publicada
+
+No Linux ou macOS:
 
 ```bash
 cd exemplos/campeonato
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
+
+export PLACAR_URL="https://rvarjao.pythonanywhere.com"
+export PLACAR_TOKEN="COLE_AQUI_O_TOKEN_DO_GRUPO"
+
+python app.py
+```
+
+No PowerShell:
+
+```powershell
+cd exemplos/campeonato
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+$env:PLACAR_URL = "https://rvarjao.pythonanywhere.com"
+$env:PLACAR_TOKEN = "COLE_AQUI_O_TOKEN_DO_GRUPO"
+
 python app.py
 ```
 
 Abra `http://127.0.0.1:5002`.
 
+Não grave o token no código nem envie o token ao GitHub.
+
+## Usar com o placar local
+
+Inicie primeiro o [Placar Eletrônico](../placar-eletronico/README.md) na porta 5001. Depois execute:
+
+```bash
+cd exemplos/campeonato
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+Sem `PLACAR_TOKEN`, o exemplo usa `http://127.0.0.1:5001`, a rota local `POST /api/placares` e `X-API-Key`.
+
+## Configuração
+
 | Variável | Padrão | Uso |
 |---|---|---|
-| `PLACAR_URL` | `http://127.0.0.1:5001` | endereço do Placar (ex.: `http://192.168.1.100:5001`) |
-| `PLACAR_API_KEY` | `chave-aula-123` | enviada no `X-API-Key` do POST; fica só no backend |
+| `PLACAR_URL` | `http://127.0.0.1:5001` | endereço da API |
+| `PLACAR_TOKEN` | vazio | token do grupo para a API publicada |
+| `PLACAR_API_KEY` | `chave-aula-123` | chave didática usada apenas no modo local |
+| `PLACAR_CREATE_PATH` | automático | `/api/placares/criar` com token ou `/api/placares` no modo local |
 | `INTERVALO_POLLING` | `5` | segundos entre consultas |
 | `PORTA` | `5002` | porta deste sistema |
 
-## Fluxo
+## Fluxo com a API publicada
 
-1. **Gerar partidas**: informe nome, modalidade e equipes → `POST /api/campeonato`.
-2. **Criar placar** numa partida → o backend faz `POST {PLACAR_URL}/api/placares`, recebe **201** e guarda o `placar_id`. A partida passa a `em_acompanhamento`.
-3. Opere a partida pelo link “operar” (abre a tela do Placar).
-4. Uma thread de fundo faz `GET /api/placares/{placar_id}` a cada `INTERVALO_POLLING` segundos, só para partidas em acompanhamento.
-5. Ao receber `status=finalizado`, registra o resultado, marca a partida como `encerrada` e **para de consultá-la**. A classificação é recalculada.
+1. Gere o campeonato e as partidas.
+2. Clique em **Criar placar**.
+3. O backend envia `POST {PLACAR_URL}/api/placares/criar` com o Bearer token.
+4. O identificador retornado fica associado à partida.
+5. O backend consulta `GET /api/placares/<id>` periodicamente.
+6. Quando o status passa para `encerrado`, o resultado entra na classificação.
+
+Todas as chamadas passam pelo backend Flask. O token não é enviado ao navegador.
 
 ## API deste sistema
 
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/campeonato` | campeonato, partidas e classificação |
-| POST | `/api/campeonato` | `{"nome", "modalidade", "equipes": [...]}` gera as partidas (substitui o atual) |
-| POST | `/api/partidas/<id>/iniciar` | cria o placar remoto (409 se já existe; 503 se o Placar estiver fora) |
+| POST | `/api/campeonato` | gera as partidas e substitui o campeonato atual |
+| POST | `/api/partidas/<id>/iniciar` | cria o placar remoto |
 | POST | `/api/partidas/<id>/sincronizar` | consulta o placar imediatamente |
 
 ## Falhas tratadas
 
-- Placar fora do ar / timeout / 5xx: registra `ultimo_erro` e tenta de novo no próximo ciclo — **não** cria outro placar.
-- 404 no placar: a partida vai para `erro_placar` e o polling para.
-- Criar placar duas vezes para a mesma partida: 409.
+- timeout ou servidor indisponível
+- respostas 401 por token ausente ou inválido
+- placar inexistente
+- tentativa de criar dois placares para a mesma partida
+- respostas inesperadas da API
 
-## Classificação
+## Teste sugerido
 
-Vitória 3, empate 1, derrota 0; desempate por vitórias, saldo e pontos marcados. No vôlei o resultado considera os **sets** vencidos.
+Use primeiro um grupo de teste. Gere duas equipes, crie um placar e confira no painel administrativo:
 
-## Teste integrado sugerido
-
-Gerar partidas → criar placar → alterar pontos no operador → ver a tela do Campeonato atualizar → finalizar → conferir que o resultado entrou na classificação. Depois pare o Placar (Ctrl+C) e veja a mensagem de erro e a retomada quando ele voltar.
+- grupo identificado
+- requisição `POST`
+- resposta `201`
+- consultas `GET`
+- contagem total de requisições
