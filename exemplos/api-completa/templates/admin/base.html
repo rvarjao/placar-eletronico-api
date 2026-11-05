@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Administração{% endblock %} · Placar Eletrônico</title>
+  <style>
+    :root { --azul:#1d4ed8; --azul-escuro:#1e3a8a; --fundo:#f4f7fb; --texto:#172033; --cinza:#64748b; --borda:#dbe3ef; --verde:#15803d; --vermelho:#b91c1c; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--fundo); color:var(--texto); font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; }
+    header { background:var(--azul-escuro); color:white; }
+    .barra { max-width:1200px; margin:auto; padding:16px 22px; display:flex; gap:24px; align-items:center; }
+    .marca { font-size:18px; font-weight:750; margin-right:auto; }
+    nav a { color:#dbeafe; text-decoration:none; margin-right:18px; }
+    main { max-width:1200px; margin:28px auto; padding:0 22px 50px; }
+    h1 { margin:0 0 22px; font-size:28px; }
+    h2 { margin:28px 0 14px; font-size:19px; }
+    .cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+    .card,.painel { background:white; border:1px solid var(--borda); border-radius:12px; box-shadow:0 4px 18px #1e3a8a0a; }
+    .card { padding:18px; }
+    .card strong { display:block; font-size:28px; margin-top:5px; }
+    .rotulo { color:var(--cinza); font-size:13px; }
+    .painel { padding:20px; overflow:auto; }
+    table { width:100%; border-collapse:collapse; white-space:nowrap; }
+    th,td { padding:11px 10px; border-bottom:1px solid #e8edf5; text-align:left; }
+    th { color:var(--cinza); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .status { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; background:#e2e8f0; }
+    .status.ok { color:var(--verde); background:#dcfce7; }
+    .status.erro { color:var(--vermelho); background:#fee2e2; }
+    form.linha { display:flex; gap:10px; align-items:end; flex-wrap:wrap; }
+    label { display:grid; gap:5px; color:var(--cinza); font-size:13px; }
+    input { min-width:220px; padding:10px 11px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
+    button,.botao { border:0; border-radius:8px; padding:10px 14px; background:var(--azul); color:white; font:inherit; font-weight:650; cursor:pointer; text-decoration:none; }
+    button.secundario { background:#475569; }
+    button.perigo { background:var(--vermelho); }
+    .acoes { display:flex; gap:7px; }
+    .acoes form { margin:0; }
+    .token { padding:14px; border:1px solid #86efac; background:#f0fdf4; border-radius:9px; margin-bottom:18px; }
+    .token code { display:block; padding:10px; margin-top:8px; background:#052e16; color:#dcfce7; border-radius:6px; overflow-wrap:anywhere; }
+    .alerta { padding:11px 13px; border-radius:8px; margin-bottom:16px; background:#fee2e2; color:#991b1b; }
+    .login { max-width:430px; margin:70px auto; }
+    .login form { display:grid; gap:14px; }
+    .login input { width:100%; min-width:0; }
+    .metodos { display:flex; gap:8px; flex-wrap:wrap; }
+    .metodo { padding:7px 10px; background:#eff6ff; color:#1e40af; border-radius:8px; }
+    @media(max-width:800px) { .cards { grid-template-columns:repeat(2,1fr); } .barra { align-items:flex-start; flex-wrap:wrap; } nav { order:3; width:100%; } }
+    @media(max-width:480px) { .cards { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  {% if session.get("admin_autenticado") %}
+  <header>
+    <div class="barra">
+      <div class="marca">Placar Eletrônico</div>
+      <nav>
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.grupos') }}">Grupos e tokens</a>
+      </nav>
+      <form method="post" action="{{ url_for('admin.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="secundario" type="submit">Sair</button>
+      </form>
+    </div>
+  </header>
+  {% endif %}
+  <main>
+    {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
+      <div class="alerta">{{ mensagem }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
