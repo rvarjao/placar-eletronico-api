@@ -11,7 +11,12 @@ app = Flask(__name__)
 ARQUIVO = Path(__file__).with_name("campeonato.json")
 LOCK = Lock()
 PLACAR_URL = os.getenv("PLACAR_URL", "http://127.0.0.1:5001").rstrip("/")
-PLACAR_API_KEY = os.getenv("PLACAR_API_KEY", "chave-aula-123")  # Fica só no backend
+PLACAR_TOKEN = os.getenv("PLACAR_TOKEN", "").strip()
+PLACAR_API_KEY = os.getenv("PLACAR_API_KEY", "chave-aula-123").strip()
+PLACAR_CREATE_PATH = os.getenv(
+    "PLACAR_CREATE_PATH",
+    "/api/placares/criar" if PLACAR_TOKEN else "/api/placares",
+).strip()
 INTERVALO_POLLING = int(os.getenv("INTERVALO_POLLING", "5"))
 TIMEOUT = 3
 MODALIDADES = {"futebol", "futsal", "basquete", "volei", "handebol", "outro"}
@@ -78,10 +83,35 @@ def resultado_final(placar, modalidade):
 
 # ---------- Integração com o Placar Eletrônico ----------
 
+def cabecalhos_placar():
+    """Bearer identifica o grupo na API publicada; X-API-Key mantém o exemplo local compatível."""
+    if PLACAR_TOKEN:
+        return {"Authorization": f"Bearer {PLACAR_TOKEN}"}
+    return {"X-API-Key": PLACAR_API_KEY}
+
+
+def normalizar_placar(placar):
+    """Converte os formatos da API publicada e do exemplo local para um formato único."""
+    return {
+        "status": placar.get("status", ""),
+        "tempo": placar.get("tempo_partida", placar.get("tempo", 0)),
+        "etapa": placar.get("etapa", ""),
+        "pontos_equipe_a": placar.get("pontos_a", placar.get("pontos_equipe_a", 0)),
+        "pontos_equipe_b": placar.get("pontos_b", placar.get("pontos_equipe_b", 0)),
+        "faltas_equipe_a": placar.get("faltas_equipe_a", 0),
+        "faltas_equipe_b": placar.get("faltas_equipe_b", 0),
+        "detalhes": placar.get("detalhes", {}),
+    }
+
+
 def consultar_placar(placar_id):
     """Retorna (placar, mensagem_erro, deve_parar)."""
     try:
-        resposta = requests.get(f"{PLACAR_URL}/api/placares/{placar_id}", timeout=TIMEOUT)
+        resposta = requests.get(
+            f"{PLACAR_URL}/api/placares/{placar_id}",
+            headers=cabecalhos_placar(),
+            timeout=TIMEOUT,
+        )
     except requests.RequestException as e:
         return None, f"Placar indisponível ({e.__class__.__name__}); tentando novamente", False
     if resposta.status_code == 404:
@@ -90,7 +120,7 @@ def consultar_placar(placar_id):
         return None, f"Placar respondeu {resposta.status_code}; tentando novamente", False
     if resposta.status_code != 200:
         return None, f"Resposta inesperada {resposta.status_code}", False
-    return resposta.json(), None, False
+    return normalizar_placar(resposta.json()), None, False
 
 def sincronizar_partida(partida, modalidade):
     placar, mensagem, parar = consultar_placar(partida["placar_id"])
@@ -101,7 +131,7 @@ def sincronizar_partida(partida, modalidade):
         return
     partida["placar"] = {c: placar.get(c) for c in ("status", "tempo", "etapa", "pontos_equipe_a", "pontos_equipe_b",
                                                     "faltas_equipe_a", "faltas_equipe_b", "detalhes")}
-    if placar["status"] == "finalizado":
+    if placar["status"] in {"finalizado", "encerrado"}:
         partida["status"] = "encerrada"
         partida["resultado"] = resultado_final(placar, modalidade)
 
@@ -132,7 +162,12 @@ def polling():
 def consultar():
     with LOCK:
         campeonato = ler()
-    return jsonify({**campeonato, "classificacao": classificacao(campeonato), "placar_url": PLACAR_URL}), 200
+    return jsonify({
+        **campeonato,
+        "classificacao": classificacao(campeonato),
+        "placar_url": PLACAR_URL,
+        "api_remota": bool(PLACAR_TOKEN),
+    }), 200
 
 @app.post("/api/campeonato")
 def criar_campeonato():
@@ -164,7 +199,12 @@ def iniciar_partida(id):
         return erro("Esta partida já possui placar", 409)
     corpo = {"nome_equipe_a": partida["equipe_a"], "nome_equipe_b": partida["equipe_b"], "modalidade": campeonato["modalidade"]}
     try:
-        resposta = requests.post(f"{PLACAR_URL}/api/placares", json=corpo, headers={"X-API-Key": PLACAR_API_KEY}, timeout=TIMEOUT)
+        resposta = requests.post(
+            f"{PLACAR_URL}{PLACAR_CREATE_PATH}",
+            json=corpo,
+            headers=cabecalhos_placar(),
+            timeout=TIMEOUT,
+        )
     except requests.RequestException as e:
         return erro(f"Placar Eletrônico indisponível: {e.__class__.__name__}", 503)
     if resposta.status_code != 201:
