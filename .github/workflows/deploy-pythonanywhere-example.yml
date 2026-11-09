@@ -1,0 +1,79 @@
+# EXEMPLO PARA OS GRUPOS DO INTERCLASSE
+# Copie este arquivo para o repositorio do grupo e ajuste as configuracoes.
+# Nao substitui o workflow de producao do professor.
+#
+# GitHub > Settings > Secrets and variables > Actions:
+# Variables:
+#   PA_USERNAME      Ex.: grupo02
+#   PA_DOMAIN        Ex.: grupo02.pythonanywhere.com
+# Secrets:
+#   PA_API_TOKEN     Token pessoal da API do PythonAnywhere
+#   PA_DEPLOY_TOKEN  Token da rota /internal/deploy da propria aplicacao
+#
+# PRE-REQUISITOS:
+# - Aplicacao Flask ja configurada e funcionando no PythonAnywhere.
+# - Endpoint POST /internal/deploy implementado com autenticacao e limitado
+#   a atualizar SOMENTE o repositorio autorizado (sem comandos arbitrarios).
+# - Git e dependencias instalaveis no ambiente do grupo.
+# - Verificar se API de reload funciona no plano PythonAnywhere utilizado.
+# - Para projetos SEM /internal/deploy, este workflow NAO funciona.
+#
+# Execucao propositalmente manual para nao publicar a cada push.
+# O workflow nao e executado no repositorio original do professor.
+
+name: Exemplo - Deploy PythonAnywhere (alunos)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exemplo-pythonanywhere-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # So deve funcionar em uma copia/fork do repositorio do professor.
+    if: github.repository != 'rvarjao/placar-eletronico-api'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PA_USERNAME: ${{ vars.PA_USERNAME }}
+      PA_DOMAIN: ${{ vars.PA_DOMAIN }}
+      PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+      PA_DEPLOY_TOKEN: ${{ secrets.PA_DEPLOY_TOKEN }}
+
+    steps:
+      - name: Validar configuracao
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PA_USERNAME" || { echo "::error::Configure PA_USERNAME em Variables"; exit 1; }
+          test -n "$PA_DOMAIN" || { echo "::error::Configure PA_DOMAIN em Variables"; exit 1; }
+          test -n "$PA_API_TOKEN" || { echo "::error::Configure PA_API_TOKEN em Secrets"; exit 1; }
+          test -n "$PA_DEPLOY_TOKEN" || { echo "::error::Configure PA_DEPLOY_TOKEN em Secrets"; exit 1; }
+          [[ "$PA_USERNAME" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "::error::PA_USERNAME invalido"; exit 1; }
+          [[ "$PA_DOMAIN" =~ ^[a-zA-Z0-9.-]+\\.pythonanywhere\\.com$ ]] || { echo "::error::PA_DOMAIN deve terminar em .pythonanywhere.com"; exit 1; }
+
+      - name: Atualizar codigo e dependencias no PythonAnywhere
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 180 \
+            --request POST \
+            --header "X-Deploy-Token: $PA_DEPLOY_TOKEN" \
+            "https://$PA_DOMAIN/internal/deploy"
+
+      - name: Recarregar aplicacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --request POST \
+            --header "Authorization: Token $PA_API_TOKEN" \
+            "https://www.pythonanywhere.com/api/v0/user/$PA_USERNAME/webapps/$PA_DOMAIN/reload/"
+
+      - name: Mostrar endereco
+        run: echo "Deploy solicitado em https://$PA_DOMAIN"
