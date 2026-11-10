@@ -1,43 +1,70 @@
-# Exemplo completo — API REST de placares
+# API completa — Supabase (PostgreSQL)
 
-Material didático isolado do projeto principal. Flask, CRUD, persistência em arquivo JSON, autenticação simples e Postman.
+A API Flask, o painel administrativo e os exemplos integrados (Campeonato e Placar Eletrônico) agora persistem dados no **Supabase**. Não utilizam mais arquivos JSON ou SQLite para persistência. As requisições e respostas HTTP continuam em formato JSON; o estado auxiliar é salvo na coluna PostgreSQL `jsonb` da tabela `estado_aplicacoes`.
 
-## Executar
+## 1. Criar tabelas
+
+No Supabase Dashboard → SQL Editor, execute [supabase/schema.sql](supabase/schema.sql).
+
+Tabelas:
+- `placares`: placares e cronômetro;
+- `grupos`: grupos de alunos;
+- `tokens_api`: hashes dos tokens;
+- `requisicoes_api`: monitoramento, com `placar_id` opcional;
+- `estado_aplicacoes`: estado do Campeonato, detalhes adicionais do Placar e configuração de conexão.
+
+Todas possuem RLS habilitado e acesso negado a `anon` e `authenticated`. A API Flask usa credencial administrativa somente no servidor. **Nunca inclua a chave secreta no HTML, JavaScript, Git ou GitHub Pages.**
+
+## 2. Variáveis de ambiente (PythonAnywhere ou local)
+
+```bash
+export SUPABASE_URL="https://SEU-PROJETO.supabase.co"
+export SUPABASE_SECRET_KEY="SUA_CHAVE_PRIVADA_DE_BACKEND"
+export SECRET_KEY="uma-chave-aleatoria-longa-para-flask"
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="uma-senha-forte"
+# Opcional, apenas para clientes antigos. Prefira tokens por grupo:
+# export API_KEY="chave-legada"
+```
+
+Compatível também com `SUPABASE_SERVICE_ROLE_KEY` (chave JWT legada), caso ainda utilize esse formato. A chave deve ficar no ambiente do PythonAnywhere/WSGI; **não** na página de configuração dos alunos.
+
+Instale as dependências e execute:
 
 ```bash
 cd exemplos/api-completa
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
 python app.py
 ```
 
-API: `http://127.0.0.1:5000`. Importe `postman_collection.json` no Postman.
+## 3. Migração dos dados existentes (ANTES de publicar)
 
-## Sequência da aula
+No servidor que contém os dados antigos (`monitoramento.db`, `placares.json`, `campeonato.json`, `estado_local.json` e arquivos de conexão), depois de executar o esquema SQL e configurar as variáveis:
 
-1. GET /api/placares — listar (200)
-2. POST /api/placares — criar (201)
-3. GET /api/placares/1 — consultar (200)
-4. PATCH /api/placares/1 — alterar pontos (200)
-5. PUT /api/placares/1 — substituir (200)
-6. DELETE /api/placares/1 — excluir (204)
-7. GET /api/placares/1 — inexistente (404)
-8. POST sem X-API-Key — não autenticado (401)
-9. POST com dados inválidos — erro de validação (400)
-
-O Postman usa as variáveis `base_url`, `api_key` e `placar_id`.
-
-## Tempo da partida
-
-Cada placar possui `tempo_partida`, em segundos decorridos. Ele começa em `0` e pode ser atualizado com `PATCH`:
-
-```json
-{
-  "tempo_partida": 125
-}
+```bash
+cd exemplos/api-completa
+python migrar_dados_legados.py
 ```
 
-O cliente pode exibi-lo como `02:05`. Em um `PUT`, informe também `tempo_partida`.
+Faça um **backup antes** e verifique os registros no Supabase. O importador lê os arquivos antigos apenas uma vez para transferir dados; ele **não apaga os arquivos**. Não ative a nova versão sem importar os dados do servidor atual, pois os tokens e placares anteriores não aparecerão no Supabase até a importação. Depois de conferir a integridade, os arquivos antigos podem ser arquivados fora da aplicação. Não execute essa rotina enquanto houver escritas no sistema antigo.
 
-**Atenção:** `chave-aula-123` é uma chave pública e didática, nunca de produção. Configure `API_KEY` por variável de ambiente em sistemas reais. O JSON é apenas para aprendizado, sem suporte a concorrência entre processos.
+## 4. Monitoramento e placar_id
+
+O registro da requisição inclui `grupo_id`, `metodo`, `rota`, `status`, `duracao_ms` e `placar_id`:
+- GET de lista ou erro sem placar existente: `placar_id = NULL`;
+- GET de placar, PUT e PATCH bem-sucedidos: ID do placar;
+- POST de criação bem-sucedido: ID gerado pelo Supabase;
+- DELETE: `placar_id = NULL`, porque o placar já foi excluído e a FK usa `ON DELETE SET NULL`.
+
+## 5. Endpoints
+
+- `GET /api/placares`
+- `GET /api/placares/<id>`
+- `POST /api/placares/criar`
+- `PUT /api/placares/<id>`
+- `PATCH /api/placares/<id>`
+- `DELETE /api/placares/<id>`
+
+Use `Authorization: Bearer TOKEN_DO_GRUPO`. Opcionalmente, habilite `API_KEY` para clientes legados com `X-API-Key`. O Postman disponibiliza uma coleção didática em `postman_collection.json` (não utilizada para persistência).
+
+A interface de Campeonato e Placar Eletrônico continua em Flask; alterações de estado são enviadas ao Supabase. O deploy de produção depende da configuração e execução do SQL no projeto Supabase; a criação das tabelas não é automática ao inicializar o Flask.

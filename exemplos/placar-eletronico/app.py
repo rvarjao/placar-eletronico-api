@@ -1,10 +1,15 @@
 import hmac
 import json
+import sys
 import os
 import secrets
 import time
 from functools import wraps
 from pathlib import Path
+
+# Armazenamento comum em Supabase, inclusive na execução isolada dos exemplos.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-completa"))
+from db_supabase import db
 from threading import Lock
 from urllib.parse import urlencode
 
@@ -15,8 +20,6 @@ app = Flask(__name__)
 # Necessário para a sessão da tela de configuração. No servidor principal este valor é
 # substituído pela SECRET_KEY dele, o que permite reaproveitar o login do administrador.
 app.secret_key = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
-ESTADO_ARQUIVO = Path(__file__).with_name("estado_local.json")    # etapa, faltas, sets e cronômetro
-CONEXAO_ARQUIVO = Path(__file__).with_name("conexao_api.json")    # token salvo pela tela; fica fora do git
 LOCK = Lock()
 API_KEY = os.getenv("API_KEY", "chave-aula-123")  # Protege as telas de operador. Somente para aula local
 
@@ -36,8 +39,7 @@ STATUS = {"nao_iniciado", "em_andamento", "pausado", "finalizado"}
 INTEIROS = ("tempo", "pontos_equipe_a", "pontos_equipe_b", "faltas_equipe_a", "faltas_equipe_b")
 ALTERAVEIS = {"status", "etapa", "detalhes", *INTEIROS}
 
-# A API guarda apenas nomes, modalidade, status, pontos e tempo decorrido. Os demais
-# dados da tela (etapa, faltas, sets, pausa) ficam neste sistema, em estado_local.json.
+# A API guarda placares; etapa, faltas, sets e pausa ficam no Supabase.
 STATUS_PARA_API = {"nao_iniciado": "aguardando", "em_andamento": "em_andamento",
                    "pausado": "em_andamento", "finalizado": "encerrado"}
 STATUS_DA_API = {"aguardando": "nao_iniciado", "em_andamento": "em_andamento", "encerrado": "finalizado"}
@@ -67,12 +69,7 @@ class ApiIndisponivel(Exception):
 
 
 def ler_arquivo_conexao():
-    try:
-        dados = json.loads(CONEXAO_ARQUIVO.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return dados if isinstance(dados, dict) else {}
-
+    return db().state_get("placar_eletronico_conexao", {})
 
 def ler_conexao():
     """Conexão efetiva: valores salvos na tela de configuração sobre os padrões do ambiente."""
@@ -85,14 +82,7 @@ def ler_conexao():
 
 
 def salvar_conexao(dados):
-    temporario = CONEXAO_ARQUIVO.with_suffix(".tmp")
-    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-    try:
-        os.chmod(temporario, 0o600)  # o arquivo guarda o token: só o dono lê
-    except OSError:
-        pass
-    temporario.replace(CONEXAO_ARQUIVO)
-
+    db().state_set("placar_eletronico_conexao", dados)
 
 def destino_api(conexao):
     """URL base da API, ou None quando a API roda neste mesmo servidor (chamada em processo)."""
@@ -156,16 +146,10 @@ def api(metodo, caminho, corpo=None):
 # valor é congelado e enviado à API como tempo_partida.
 
 def ler_estado():
-    try:
-        dados = json.loads(ESTADO_ARQUIVO.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return dados if isinstance(dados, dict) else {}
+    return db().state_get("placar_eletronico_estado", {})
 
 def salvar_estado(estado):
-    temporario = ESTADO_ARQUIVO.with_suffix(".tmp")
-    temporario.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporario.replace(ESTADO_ARQUIVO)
+    db().state_set("placar_eletronico_estado", estado)
 
 def estado_padrao(modalidade, etapa=None):
     padrao = PADROES.get(modalidade, PADROES["outro"])

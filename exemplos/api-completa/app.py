@@ -1,26 +1,21 @@
 import hashlib
 import hmac
-import json
 import os
 import subprocess
-import sqlite3
 import sys
 from pathlib import Path
-from threading import Lock
 from time import perf_counter
 
 from flask import Flask, g, jsonify, render_template, request
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
-from admin_panel import admin_bp, autenticar_token, inicializar_banco, registrar_requisicao
+from admin_panel import admin_bp, autenticar_token, registrar_requisicao
+from db_supabase import db, SupabaseError
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
 app.register_blueprint(admin_bp)
-inicializar_banco()
-ARQUIVO = Path(__file__).with_name("placares.json")
-LOCK = Lock()
-API_KEY = os.getenv("x-api-key", "chave-aula-123")  # Somente para aula local
+API_KEY = os.getenv("API_KEY", "")  # Compatibilidade opcional, desabilitada por padrão
 DEPLOY_TOKEN = os.getenv("DEPLOY_TOKEN", "")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REQUIREMENTS = Path(__file__).with_name("requirements.txt")
@@ -29,21 +24,13 @@ CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
 def ler():
-    placares = json.loads(ARQUIVO.read_text(encoding="utf-8")) if ARQUIVO.exists() else []
-    for placar in placares:
-        placar.setdefault("tempo_partida", 0)
-    return placares
+    return db().all("placares", order="id.asc")
 
-def salvar(placares):
-    temporario = ARQUIVO.with_suffix(".tmp")
-    temporario.write_text(json.dumps(placares, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporario.replace(ARQUIVO)
+def localizar(id):
+    return db().one("placares", filters={"id": f"eq.{id}"})
 
 def erro(mensagem, status):
     return jsonify({"erro": mensagem}), status
-
-def localizar(placares, id):
-    return next((p for p in placares if p["id"] == id), None)
 
 def validar_equipes(dados):
     if not isinstance(dados, dict):
@@ -63,6 +50,7 @@ def tempo_valido(dados):
 def autenticar_requisicao():
     g.inicio_requisicao = perf_counter()
     g.grupo_api_id = None
+    g.placar_id = None
 
     if not request.path.startswith("/api/"):
         return None
@@ -77,7 +65,7 @@ def autenticar_requisicao():
         return None
 
     chave_legada = request.headers.get("X-API-Key", "")
-    if chave_legada and hmac.compare_digest(chave_legada, API_KEY):
+    if API_KEY and chave_legada and hmac.compare_digest(chave_legada, API_KEY):
         return None
 
     return erro("Token do grupo ausente ou inválido", 401)
@@ -95,8 +83,9 @@ def monitorar_requisicao(resposta):
                 request.path,
                 resposta.status_code,
                 duracao_ms,
+                getattr(g, "placar_id", None),
             )
-        except sqlite3.Error:
+        except SupabaseError:
             app.logger.exception("Não foi possível registrar a requisição da API")
     return resposta
 
@@ -171,13 +160,13 @@ def deploy():
 
 @app.get("/api/placares")
 def listar():
-    with LOCK:
-        return jsonify(ler()), 200
+    return jsonify(ler()), 200
 
 @app.get("/api/placares/<int:id>")
 def consultar(id):
-    with LOCK:
-        placar = localizar(ler(), id)
+    placar = localizar(id)
+    if placar:
+        g.placar_id = id
     return (jsonify(placar), 200) if placar else erro("Placar não encontrado", 404)
 
 @app.post("/api/placares/criar")
@@ -186,13 +175,11 @@ def criar():
     mensagem = validar_equipes(dados)
     if mensagem:
         return erro(mensagem, 400)
-    with LOCK:
-        placares = ler()
-        id = max((p["id"] for p in placares), default=0) + 1
-        placar = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": "aguardando", "pontos_a": 0, "pontos_b": 0, "tempo_partida": 0}
-        placares.append(placar)
-        salvar(placares)
-    return jsonify(placar), 201, {"Location": f"/api/placares/{id}"}
+    placar = db().insert("placares", {**{c: dados[c].strip() for c in CAMPOS},
+                                      "status": "aguardando", "pontos_a": 0,
+                                      "pontos_b": 0, "tempo_partida": 0})
+    g.placar_id = placar["id"]
+    return jsonify(placar), 201, {"Location": f"/api/placares/{placar['id']}"}
 
 @app.put("/api/placares/<int:id>")
 def substituir(id):
@@ -202,15 +189,14 @@ def substituir(id):
         return erro(mensagem, 400)
     if not pontos_validos(dados) or not tempo_valido(dados) or dados.get("status") not in STATUS:
         return erro("Informe status válido, pontos_a/pontos_b e tempo_partida como inteiros não negativos", 400)
-    with LOCK:
-        placares = ler()
-        atual = localizar(placares, id)
-        if atual is None:
-            return erro("Placar não encontrado", 404)
-        novo = {"id": id, **{c: dados[c].strip() for c in CAMPOS}, "status": dados["status"], "pontos_a": dados["pontos_a"], "pontos_b": dados["pontos_b"], "tempo_partida": dados["tempo_partida"]}
-        placares[placares.index(atual)] = novo
-        salvar(placares)
-    return jsonify(novo), 200
+    novo = {**{c: dados[c].strip() for c in CAMPOS},
+            "status": dados["status"], "pontos_a": dados["pontos_a"],
+            "pontos_b": dados["pontos_b"], "tempo_partida": dados["tempo_partida"]}
+    atualizado = db().update("placares", novo, {"id": f"eq.{id}"})
+    if not atualizado:
+        return erro("Placar não encontrado", 404)
+    g.placar_id = id
+    return jsonify(atualizado[0]), 200
 
 @app.patch("/api/placares/<int:id>")
 def alterar(id):
@@ -225,25 +211,25 @@ def alterar(id):
         return erro("Status inválido", 400)
     if "tempo_partida" in dados and not tempo_valido(dados):
         return erro("tempo_partida deve ser inteiro não negativo", 400)
-    with LOCK:
-        placares = ler()
-        placar = localizar(placares, id)
-        if placar is None:
-            return erro("Placar não encontrado", 404)
-        placar.update(dados)
-        salvar(placares)
-    return jsonify(placar), 200
+    atualizado = db().update("placares", dados, {"id": f"eq.{id}"})
+    if not atualizado:
+        return erro("Placar não encontrado", 404)
+    g.placar_id = id
+    return jsonify(atualizado[0]), 200
 
 @app.delete("/api/placares/<int:id>")
 def excluir(id):
-    with LOCK:
-        placares = ler()
-        placar = localizar(placares, id)
-        if placar is None:
-            return erro("Placar não encontrado", 404)
-        placares.remove(placar)
-        salvar(placares)
+    # A FK do histórico usa ON DELETE SET NULL para preservar o log.
+    excluidos = db().delete("placares", {"id": f"eq.{id}"})
+    if not excluidos:
+        return erro("Placar não encontrado", 404)
+    # O placar foi removido: histórico novo também fica sem FK.
     return "", 204
+
+@app.errorhandler(SupabaseError)
+def erro_supabase(error):
+    app.logger.exception("Falha de persistência no Supabase")
+    return erro("Banco de dados temporariamente indisponível", 503)
 
 def carregar_exemplo(nome, caminho):
     """Carrega uma aplicação Flask de exemplo sem exigir nomes de pacotes válidos."""

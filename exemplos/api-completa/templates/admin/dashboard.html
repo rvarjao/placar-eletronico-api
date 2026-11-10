@@ -47,19 +47,20 @@
 <h2>100 requisições mais recentes</h2>
 <section class="painel">
   <table>
-    <thead><tr><th>Data</th><th>Grupo</th><th>Método</th><th>Rota</th><th>Status</th><th>Duração</th></tr></thead>
+    <thead><tr><th>Data</th><th>Grupo</th><th>Placar ID</th><th>Método</th><th>Rota</th><th>Status</th><th>Duração</th></tr></thead>
     <tbody>
     {% for item in recentes %}
       <tr>
         <td>{{ item.criado_em }}</td>
         <td>{{ item.grupo }}</td>
+        <td>{{ item.placar_id if item.placar_id is not none else "—" }}</td>
         <td><strong>{{ item.metodo }}</strong></td>
         <td><code>{{ item.rota }}</code></td>
         <td><span class="status {{ 'ok' if item.status < 400 else 'erro' }}">{{ item.status }}</span></td>
         <td>{{ item.duracao_ms }} ms</td>
       </tr>
     {% else %}
-      <tr><td colspan="6">Nenhuma requisição registrada.</td></tr>
+      <tr><td colspan="7">Nenhuma requisição registrada.</td></tr>
     {% endfor %}
     </tbody>
   </table>
