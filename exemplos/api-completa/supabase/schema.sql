@@ -34,6 +34,11 @@ create table if not exists public.requisicoes_api (
   duracao_ms integer not null,
   criado_em timestamptz not null default now()
 );
+-- Nullable: listagens e chamadas sem placar não possuem vínculo.
+-- ALTER funciona tanto em instalações novas quanto nas que já executaram o schema.
+alter table public.requisicoes_api
+  add column if not exists placar_id bigint references public.placares(id) on delete set null;
+create index if not exists idx_requisicoes_placar_data on public.requisicoes_api(placar_id, criado_em desc);
 create index if not exists idx_requisicoes_grupo_data on public.requisicoes_api(grupo_id,criado_em desc);
 create index if not exists idx_requisicoes_data on public.requisicoes_api(criado_em desc);
 create index if not exists idx_tokens_hash on public.tokens_api(token_hash) where ativo=1;
