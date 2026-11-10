@@ -71,6 +71,17 @@ class SupabaseDB:
                 return out
             start += batch
 
+    def state_get(self, chave, default=None):
+        row = self.one("estado_aplicacoes", columns="dados", filters={"chave": f"eq.{chave}"})
+        return row["dados"] if row is not None else default
+
+    def state_set(self, chave, dados):
+        # UPSERT cria ou substitui o estado; nenhum arquivo local é gravado.
+        return self.request("POST", "estado_aplicacoes",
+                            params={"on_conflict": "chave"},
+                            data={"chave": chave, "dados": dados},
+                            prefer="resolution=merge-duplicates,return=minimal")
+
     def rpc(self, name):
         return self.request("POST", "rpc/" + name, data={})
 
