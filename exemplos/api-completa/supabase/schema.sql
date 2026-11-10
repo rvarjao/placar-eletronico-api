@@ -38,6 +38,17 @@ create table if not exists public.requisicoes_api (
 -- ALTER funciona tanto em instalações novas quanto nas que já executaram o schema.
 alter table public.requisicoes_api
   add column if not exists placar_id bigint references public.placares(id) on delete set null;
+-- Estado adicional do Campeonato, Placar Eletrônico e configuração de conexão.
+-- JSONB é um tipo PostgreSQL: não cria arquivos JSON no servidor.
+create table if not exists public.estado_aplicacoes (
+  chave text primary key,
+  dados jsonb not null default '{}'::jsonb,
+  atualizado_em timestamptz not null default now()
+);
+alter table public.estado_aplicacoes enable row level security;
+revoke all on public.estado_aplicacoes from anon, authenticated;
+grant select, insert, update, delete on public.estado_aplicacoes to service_role;
+
 create index if not exists idx_requisicoes_placar_data on public.requisicoes_api(placar_id, criado_em desc);
 create index if not exists idx_requisicoes_grupo_data on public.requisicoes_api(grupo_id,criado_em desc);
 create index if not exists idx_requisicoes_data on public.requisicoes_api(criado_em desc);
