@@ -21,11 +21,20 @@ Todas possuem RLS habilitado e acesso negado a `anon` e `authenticated`. A API F
 export SUPABASE_URL="https://SEU-PROJETO.supabase.co"
 export SUPABASE_SECRET_KEY="SUA_CHAVE_PRIVADA_DE_BACKEND"
 export SECRET_KEY="uma-chave-aleatoria-longa-para-flask"
-export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="uma-senha-forte"
+# Opcional: chave publicável usada apenas no login do Supabase Auth
+# (se omitida, o login usa a SUPABASE_SECRET_KEY no servidor)
+export SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
+# Opcional: restringe o painel a estes e-mails (separados por vírgula)
+# export ADMIN_EMAILS="professor@escola.br"
 # Opcional, apenas para clientes antigos. Prefira tokens por grupo:
 # export API_KEY="chave-legada"
 ```
+
+### Login da área administrativa
+
+O acesso a `/admin` usa os **usuários do Supabase Auth**: entre com o mesmo e-mail e senha cadastrados em Dashboard → Authentication → Users. A senha é validada pelo Supabase no servidor Flask; o navegador nunca recebe chaves. `ADMIN_USERNAME` e `ADMIN_PASSWORD` não são mais utilizados.
+
+**Importante:** qualquer usuário válido do projeto entra no painel. Desative o cadastro público (Authentication → Sign In / Providers → *Allow new users to sign up*) ou defina `ADMIN_EMAILS`.
 
 Compatível também com `SUPABASE_SERVICE_ROLE_KEY` (chave JWT legada), caso ainda utilize esse formato. A chave deve ficar no ambiente do PythonAnywhere/WSGI; **não** na página de configuração dos alunos.
 

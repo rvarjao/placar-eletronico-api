@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
-from db_supabase import db
+from db_supabase import db, SupabaseError
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -76,20 +76,28 @@ def destino_seguro(destino):
 def login():
     proximo = destino_seguro(request.values.get("next", ""))
     if request.method == "POST":
-        usuario_esperado = os.getenv("ADMIN_USERNAME", "admin")
-        senha_esperada = os.getenv("ADMIN_PASSWORD", "")
-        usuario = request.form.get("usuario", "")
+        email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
-        valido = (bool(senha_esperada)
-                  and hmac.compare_digest(usuario, usuario_esperado)
-                  and hmac.compare_digest(senha, senha_esperada))
-        if valido:
+        try:
+            usuario = db().autenticar_usuario(email, senha) if email and senha else None
+        except SupabaseError:
+            flash("Não foi possível contatar o Supabase. Tente novamente.", "erro")
+            return render_template("admin/login.html", proximo=proximo, email=email)
+        if usuario and email_autorizado(usuario.get("email", "")):
             session.clear()
             session["admin_autenticado"] = True
+            session["admin_usuario_id"] = usuario.get("id")
+            session["admin_email"] = usuario.get("email")
             token_csrf()
             return redirect(proximo or url_for("admin.dashboard"))
-        flash("Usuário ou senha inválidos.", "erro")
-    return render_template("admin/login.html", proximo=proximo)
+        flash("E-mail ou senha inválidos.", "erro")
+    return render_template("admin/login.html", proximo=proximo, email="")
+
+
+def email_autorizado(email):
+    """Se ADMIN_EMAILS estiver definido, restringe o painel a esses e-mails."""
+    permitidos = {e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
+    return bool(email) and (not permitidos or email.lower() in permitidos)
 
 
 @admin_bp.post("/logout")

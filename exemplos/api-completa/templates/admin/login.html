@@ -3,11 +3,11 @@
 {% block content %}
 <section class="login painel">
   <h1>Área administrativa</h1>
-  <p>Entre com as credenciais do professor para administrar grupos, tokens e requisições.</p>
+  <p>Entre com o usuário do Supabase (e-mail e senha) para administrar grupos, tokens e requisições.</p>
   <form method="post">
     {% if proximo %}<input type="hidden" name="next" value="{{ proximo }}">{% endif %}
-    <label>Usuário
-      <input name="usuario" autocomplete="username" required>
+    <label>E-mail
+      <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required>
     </label>
     <label>Senha
       <input type="password" name="senha" autocomplete="current-password" required>

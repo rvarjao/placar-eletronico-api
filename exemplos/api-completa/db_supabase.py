@@ -15,11 +15,36 @@ class SupabaseDB:
             raise RuntimeError("Configure SUPABASE_URL e SUPABASE_SECRET_KEY no servidor")
         if not url.startswith("https://"):
             raise RuntimeError("SUPABASE_URL deve usar HTTPS")
+        self.base_url = url
         self.url = url + "/rest/v1"
         self.headers = {"apikey": key, "Accept": "application/json"}
         if not key.startswith("sb_secret_"):
             self.headers["Authorization"] = "Bearer " + key
+        # Para o Auth basta a chave publicável; se ausente, usa a chave do servidor.
+        self.auth_key = os.getenv("SUPABASE_PUBLISHABLE_KEY") or key
         self.session = requests.Session()
+
+    def autenticar_usuario(self, email, senha):
+        """Valida e-mail e senha de um usuário do Supabase Auth.
+
+        Retorna o objeto ``user`` em caso de sucesso, ``None`` para credenciais
+        inválidas e levanta ``SupabaseError`` para falhas de comunicação.
+        """
+        headers = {"apikey": self.auth_key, "Content-Type": "application/json"}
+        try:
+            response = self.session.post(
+                self.base_url + "/auth/v1/token",
+                params={"grant_type": "password"},
+                json={"email": email, "password": senha},
+                headers=headers, timeout=12,
+            )
+        except requests.RequestException as error:
+            raise SupabaseError(f"Falha no Supabase Auth: {error}") from error
+        if response.status_code in (400, 401, 403, 422):
+            return None
+        if not response.ok:
+            raise SupabaseError(f"Falha no Supabase Auth: HTTP {response.status_code}")
+        return response.json().get("user")
 
     def request(self, method, resource, params=None, data=None, prefer=None):
         headers = dict(self.headers)
