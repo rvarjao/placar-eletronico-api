@@ -1,11 +1,16 @@
 import hmac
 import json
+import sys
 import os
 import secrets
 import time
 from functools import wraps
 from itertools import combinations
 from pathlib import Path
+
+# Armazenamento comum em Supabase, inclusive na execução isolada dos exemplos.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-completa"))
+from db_supabase import db
 from threading import Lock, Thread
 from urllib.parse import urlencode
 
@@ -16,8 +21,6 @@ app = Flask(__name__)
 # Necessário para a sessão da tela de configuração. No servidor principal este valor é
 # substituído pela SECRET_KEY dele, o que permite reaproveitar o login do administrador.
 app.secret_key = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
-ARQUIVO = Path(__file__).with_name("campeonato.json")
-CONEXAO_ARQUIVO = Path(__file__).with_name("conexao_api.json")  # token salvo pela tela; fica fora do git
 LOCK = Lock()
 
 # Valores iniciais da conexão (variáveis de ambiente). O que for salvo na tela de
@@ -42,14 +45,11 @@ MODALIDADES = {"futebol", "futsal", "basquete", "volei", "handebol", "outro"}
 #                               \-> erro_placar (placar sumiu: 404; não recria automaticamente)
 
 def ler():
-    if ARQUIVO.exists():
-        return json.loads(ARQUIVO.read_text(encoding="utf-8"))
-    return {"nome": "", "modalidade": "futsal", "equipes": [], "partidas": []}
+    return db().state_get("campeonato_estado",
+                          {"nome": "", "modalidade": "futsal", "equipes": [], "partidas": []})
 
 def salvar(campeonato):
-    temporario = ARQUIVO.with_suffix(".tmp")
-    temporario.write_text(json.dumps(campeonato, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporario.replace(ARQUIVO)
+    db().state_set("campeonato_estado", campeonato)
 
 def erro(mensagem, status):
     return jsonify({"erro": mensagem}), status
@@ -104,12 +104,7 @@ class ApiIndisponivel(Exception):
 
 
 def ler_arquivo_conexao():
-    try:
-        dados = json.loads(CONEXAO_ARQUIVO.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return dados if isinstance(dados, dict) else {}
-
+    return db().state_get("campeonato_conexao", {})
 
 def ler_conexao():
     """Conexão efetiva: valores salvos na tela de configuração sobre os padrões do ambiente."""
@@ -122,14 +117,7 @@ def ler_conexao():
 
 
 def salvar_conexao(dados):
-    temporario = CONEXAO_ARQUIVO.with_suffix(".tmp")
-    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-    try:
-        os.chmod(temporario, 0o600)  # o arquivo guarda o token: só o dono lê
-    except OSError:
-        pass
-    temporario.replace(CONEXAO_ARQUIVO)
-
+    db().state_set("campeonato_conexao", dados)
 
 def destino_api(conexao):
     """URL base da API, ou None quando a API roda neste mesmo servidor (chamada em processo)."""
