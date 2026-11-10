@@ -2,69 +2,19 @@ import hashlib
 import hmac
 import os
 import secrets
-import sqlite3
+from collections import Counter
 from datetime import datetime, timezone
 from functools import wraps
-from pathlib import Path
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from db_supabase import db
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
-DATABASE_PATH = Path(__file__).with_name("monitoramento.db")
 
 
 def agora_iso():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
-def conectar():
-    conexao = sqlite3.connect(DATABASE_PATH)
-    conexao.row_factory = sqlite3.Row
-    conexao.execute("PRAGMA foreign_keys = ON")
-    return conexao
-
-
-def inicializar_banco():
-    with conectar() as conexao:
-        conexao.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS grupos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                turma TEXT,
-                ativo INTEGER NOT NULL DEFAULT 1,
-                criado_em TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS tokens_api (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                grupo_id INTEGER NOT NULL,
-                token_hash TEXT NOT NULL UNIQUE,
-                prefixo TEXT NOT NULL,
-                ativo INTEGER NOT NULL DEFAULT 1,
-                criado_em TEXT NOT NULL,
-                revogado_em TEXT,
-                FOREIGN KEY (grupo_id) REFERENCES grupos(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS requisicoes_api (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                grupo_id INTEGER,
-                metodo TEXT NOT NULL,
-                rota TEXT NOT NULL,
-                status INTEGER NOT NULL,
-                duracao_ms INTEGER NOT NULL,
-                criado_em TEXT NOT NULL,
-                FOREIGN KEY (grupo_id) REFERENCES grupos(id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_requisicoes_grupo_data
-                ON requisicoes_api (grupo_id, criado_em);
-            CREATE INDEX IF NOT EXISTS idx_requisicoes_data
-                ON requisicoes_api (criado_em);
-            """
-        )
 
 
 def hash_token(token):
@@ -74,31 +24,20 @@ def hash_token(token):
 def autenticar_token(token):
     if not token:
         return None
-
-    with conectar() as conexao:
-        return conexao.execute(
-            """
-            SELECT grupos.id, grupos.nome, grupos.turma
-            FROM tokens_api
-            JOIN grupos ON grupos.id = tokens_api.grupo_id
-            WHERE tokens_api.token_hash = ?
-              AND tokens_api.ativo = 1
-              AND grupos.ativo = 1
-            """,
-            (hash_token(token),),
-        ).fetchone()
+    registro = db().one("tokens_api", columns="grupo_id",
+                        filters={"token_hash": f"eq.{hash_token(token)}", "ativo": "eq.1"})
+    if registro is None:
+        return None
+    return db().one("grupos", columns="id,nome,turma",
+                    filters={"id": f"eq.{registro['grupo_id']}", "ativo": "eq.1"})
 
 
-def registrar_requisicao(grupo_id, metodo, rota, status, duracao_ms):
-    with conectar() as conexao:
-        conexao.execute(
-            """
-            INSERT INTO requisicoes_api
-                (grupo_id, metodo, rota, status, duracao_ms, criado_em)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (grupo_id, metodo, rota, status, duracao_ms, agora_iso()),
-        )
+def registrar_requisicao(grupo_id, metodo, rota, status, duracao_ms, placar_id=None):
+    db().insert("requisicoes_api", {
+        "grupo_id": grupo_id, "placar_id": placar_id,
+        "metodo": metodo, "rota": rota, "status": status,
+        "duracao_ms": duracao_ms, "criado_em": agora_iso(),
+    })
 
 
 def admin_autenticado(funcao):
@@ -107,7 +46,6 @@ def admin_autenticado(funcao):
         if not session.get("admin_autenticado"):
             return redirect(url_for("admin.login"))
         return funcao(*args, **kwargs)
-
     return decorada
 
 
@@ -129,7 +67,6 @@ def contexto_admin():
 
 
 def destino_seguro(destino):
-    """Aceita só caminhos deste mesmo site (ex.: /exemplos/campeonato/configuracao)."""
     if destino.startswith("/") and not destino.startswith("//") and "\\" not in destino:
         return destino
     return ""
@@ -143,20 +80,15 @@ def login():
         senha_esperada = os.getenv("ADMIN_PASSWORD", "")
         usuario = request.form.get("usuario", "")
         senha = request.form.get("senha", "")
-
-        credenciais_validas = (
-            bool(senha_esperada)
-            and hmac.compare_digest(usuario, usuario_esperado)
-            and hmac.compare_digest(senha, senha_esperada)
-        )
-        if credenciais_validas:
+        valido = (bool(senha_esperada)
+                  and hmac.compare_digest(usuario, usuario_esperado)
+                  and hmac.compare_digest(senha, senha_esperada))
+        if valido:
             session.clear()
             session["admin_autenticado"] = True
             token_csrf()
             return redirect(proximo or url_for("admin.dashboard"))
-
         flash("Usuário ou senha inválidos.", "erro")
-
     return render_template("admin/login.html", proximo=proximo)
 
 
@@ -169,89 +101,62 @@ def logout():
     return redirect(url_for("admin.login"))
 
 
+def listar_grupos():
+    grupos = db().all("grupos", order="nome.asc")
+    tokens = db().all("tokens_api", columns="grupo_id,prefixo,ativo",
+                      filters={"ativo": "eq.1"}, order="id.desc")
+    por_grupo = {}
+    for token in tokens:
+        por_grupo.setdefault(token["grupo_id"], token)
+    return [{**grupo,
+             "prefixo": por_grupo.get(grupo["id"], {}).get("prefixo"),
+             "token_ativo": por_grupo.get(grupo["id"], {}).get("ativo")}
+            for grupo in grupos]
+
+
 @admin_bp.get("/")
 @admin_autenticado
 def dashboard():
-    with conectar() as conexao:
-        resumo = conexao.execute(
-            """
-            SELECT
-                (SELECT COUNT(*) FROM grupos WHERE ativo = 1) AS grupos_ativos,
-                (SELECT COUNT(*) FROM requisicoes_api
-                    WHERE date(criado_em) = date('now')) AS requisicoes_hoje,
-                (SELECT COUNT(*) FROM requisicoes_api
-                    WHERE date(criado_em) = date('now') AND status >= 400) AS erros_hoje,
-                (SELECT COUNT(*) FROM grupos g
-                    WHERE g.ativo = 1
-                    AND NOT EXISTS (
-                        SELECT 1 FROM requisicoes_api r WHERE r.grupo_id = g.id
-                    )) AS nunca_conectaram
-            """
-        ).fetchone()
-
-        grupos = conexao.execute(
-            """
-            SELECT
-                g.id,
-                g.nome,
-                g.turma,
-                g.ativo,
-                COUNT(r.id) AS total_requisicoes,
-                MIN(r.criado_em) AS primeira_requisicao,
-                MAX(r.criado_em) AS ultima_requisicao,
-                SUM(CASE WHEN r.status >= 400 THEN 1 ELSE 0 END) AS total_erros
-            FROM grupos g
-            LEFT JOIN requisicoes_api r ON r.grupo_id = g.id
-            GROUP BY g.id
-            ORDER BY ultima_requisicao DESC, g.nome
-            """
-        ).fetchall()
-
-        metodos = conexao.execute(
-            """
-            SELECT metodo, COUNT(*) AS total
-            FROM requisicoes_api
-            GROUP BY metodo
-            ORDER BY total DESC
-            """
-        ).fetchall()
-
-        recentes = conexao.execute(
-            """
-            SELECT r.criado_em, r.metodo, r.rota, r.status, r.duracao_ms,
-                   COALESCE(g.nome, 'Não identificado') AS grupo
-            FROM requisicoes_api r
-            LEFT JOIN grupos g ON g.id = r.grupo_id
-            ORDER BY r.id DESC
-            LIMIT 100
-            """
-        ).fetchall()
-
-    return render_template(
-        "admin/dashboard.html",
-        resumo=resumo,
-        grupos=grupos,
-        metodos=metodos,
-        recentes=recentes,
-    )
+    grupos_raw = db().all("grupos", order="nome.asc")
+    requisicoes = db().all("requisicoes_api", order="id.desc")
+    agora = datetime.now(timezone.utc).date()
+    hoje = [r for r in requisicoes if datetime.fromisoformat(
+        r["criado_em"].replace("Z", "+00:00")).astimezone(timezone.utc).date() == agora]
+    contagem = Counter(r["grupo_id"] for r in requisicoes)
+    erros = Counter(r["grupo_id"] for r in requisicoes if r["status"] >= 400)
+    metodos = Counter(r["metodo"] for r in requisicoes)
+    por_grupo = {}
+    for r in requisicoes:
+        if r["grupo_id"] is None:
+            continue
+        info = por_grupo.setdefault(r["grupo_id"], {"primeira": r["criado_em"], "ultima": r["criado_em"]})
+        info["primeira"] = min(info["primeira"], r["criado_em"])
+        info["ultima"] = max(info["ultima"], r["criado_em"])
+    resumo = {
+        "grupos_ativos": sum(g["ativo"] == 1 for g in grupos_raw),
+        "requisicoes_hoje": len(hoje),
+        "erros_hoje": sum(r["status"] >= 400 for r in hoje),
+        "nunca_conectaram": sum(g["ativo"] == 1 and not contagem[g["id"]] for g in grupos_raw),
+    }
+    grupos = [{**g,
+               "total_requisicoes": contagem[g["id"]],
+               "total_erros": erros[g["id"]],
+               "primeira_requisicao": por_grupo.get(g["id"], {}).get("primeira"),
+               "ultima_requisicao": por_grupo.get(g["id"], {}).get("ultima")}
+              for g in grupos_raw]
+    grupos.sort(key=lambda g: (g["ultima_requisicao"] is not None, g["ultima_requisicao"] or ""), reverse=True)
+    nomes = {g["id"]: g["nome"] for g in grupos_raw}
+    recentes = [{**r, "grupo": nomes.get(r["grupo_id"], "Não identificado")}
+               for r in requisicoes[:100]]
+    return render_template("admin/dashboard.html", resumo=resumo, grupos=grupos,
+                           metodos=[{"metodo": m, "total": n} for m, n in metodos.most_common()],
+                           recentes=recentes)
 
 
 @admin_bp.get("/grupos")
 @admin_autenticado
 def grupos():
-    with conectar() as conexao:
-        lista = conexao.execute(
-            """
-            SELECT g.id, g.nome, g.turma, g.ativo, g.criado_em,
-                   t.prefixo, t.ativo AS token_ativo
-            FROM grupos g
-            LEFT JOIN tokens_api t
-              ON t.grupo_id = g.id AND t.ativo = 1
-            ORDER BY g.nome
-            """
-        ).fetchall()
-
-    return render_template("admin/grupos.html", grupos=lista, novo_token=None)
+    return render_template("admin/grupos.html", grupos=listar_grupos(), novo_token=None)
 
 
 @admin_bp.post("/grupos")
@@ -259,46 +164,17 @@ def grupos():
 def criar_grupo():
     if not csrf_valido():
         return "Requisição inválida", 400
-
     nome = request.form.get("nome", "").strip()
     turma = request.form.get("turma", "").strip()
-
     if not nome:
         flash("Informe o nome do grupo.", "erro")
         return redirect(url_for("admin.grupos"))
-
     token = secrets.token_urlsafe(32)
-    with conectar() as conexao:
-        cursor = conexao.execute(
-            "INSERT INTO grupos (nome, turma, criado_em) VALUES (?, ?, ?)",
-            (nome, turma or None, agora_iso()),
-        )
-        grupo_id = cursor.lastrowid
-        conexao.execute(
-            """
-            INSERT INTO tokens_api
-                (grupo_id, token_hash, prefixo, criado_em)
-            VALUES (?, ?, ?, ?)
-            """,
-            (grupo_id, hash_token(token), token[:8], agora_iso()),
-        )
-
-        lista = conexao.execute(
-            """
-            SELECT g.id, g.nome, g.turma, g.ativo, g.criado_em,
-                   t.prefixo, t.ativo AS token_ativo
-            FROM grupos g
-            LEFT JOIN tokens_api t
-              ON t.grupo_id = g.id AND t.ativo = 1
-            ORDER BY g.nome
-            """
-        ).fetchall()
-
-    return render_template(
-        "admin/grupos.html",
-        grupos=lista,
-        novo_token={"grupo": nome, "token": token},
-    )
+    grupo = db().insert("grupos", {"nome": nome, "turma": turma or None, "criado_em": agora_iso()})
+    db().insert("tokens_api", {"grupo_id": grupo["id"], "token_hash": hash_token(token),
+                              "prefixo": token[:8], "criado_em": agora_iso()})
+    return render_template("admin/grupos.html", grupos=listar_grupos(),
+                           novo_token={"grupo": nome, "token": token})
 
 
 @admin_bp.post("/grupos/<int:grupo_id>/novo-token")
@@ -306,49 +182,16 @@ def criar_grupo():
 def novo_token(grupo_id):
     if not csrf_valido():
         return "Requisição inválida", 400
-
+    grupo = db().one("grupos", columns="id,nome", filters={"id": f"eq.{grupo_id}"})
+    if grupo is None:
+        return "Grupo não encontrado", 404
     token = secrets.token_urlsafe(32)
-    with conectar() as conexao:
-        grupo = conexao.execute(
-            "SELECT nome FROM grupos WHERE id = ?",
-            (grupo_id,),
-        ).fetchone()
-        if grupo is None:
-            return "Grupo não encontrado", 404
-
-        conexao.execute(
-            """
-            UPDATE tokens_api
-            SET ativo = 0, revogado_em = ?
-            WHERE grupo_id = ? AND ativo = 1
-            """,
-            (agora_iso(), grupo_id),
-        )
-        conexao.execute(
-            """
-            INSERT INTO tokens_api
-                (grupo_id, token_hash, prefixo, criado_em)
-            VALUES (?, ?, ?, ?)
-            """,
-            (grupo_id, hash_token(token), token[:8], agora_iso()),
-        )
-
-        lista = conexao.execute(
-            """
-            SELECT g.id, g.nome, g.turma, g.ativo, g.criado_em,
-                   t.prefixo, t.ativo AS token_ativo
-            FROM grupos g
-            LEFT JOIN tokens_api t
-              ON t.grupo_id = g.id AND t.ativo = 1
-            ORDER BY g.nome
-            """
-        ).fetchall()
-
-    return render_template(
-        "admin/grupos.html",
-        grupos=lista,
-        novo_token={"grupo": grupo["nome"], "token": token},
-    )
+    db().update("tokens_api", {"ativo": 0, "revogado_em": agora_iso()},
+                {"grupo_id": f"eq.{grupo_id}", "ativo": "eq.1"})
+    db().insert("tokens_api", {"grupo_id": grupo_id, "token_hash": hash_token(token),
+                              "prefixo": token[:8], "criado_em": agora_iso()})
+    return render_template("admin/grupos.html", grupos=listar_grupos(),
+                           novo_token={"grupo": grupo["nome"], "token": token})
 
 
 @admin_bp.post("/grupos/<int:grupo_id>/alternar")
@@ -356,11 +199,8 @@ def novo_token(grupo_id):
 def alternar_grupo(grupo_id):
     if not csrf_valido():
         return "Requisição inválida", 400
-
-    with conectar() as conexao:
-        conexao.execute(
-            "UPDATE grupos SET ativo = CASE ativo WHEN 1 THEN 0 ELSE 1 END WHERE id = ?",
-            (grupo_id,),
-        )
-
+    grupo = db().one("grupos", columns="id,ativo", filters={"id": f"eq.{grupo_id}"})
+    if grupo is None:
+        return "Grupo não encontrado", 404
+    db().update("grupos", {"ativo": 0 if grupo["ativo"] else 1}, {"id": f"eq.{grupo_id}"})
     return redirect(url_for("admin.grupos"))
