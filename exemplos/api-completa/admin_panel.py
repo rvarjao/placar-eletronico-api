@@ -111,8 +111,12 @@ def logout():
     return redirect(url_for("admin.login"))
 
 
+def integrantes_do_grupo(grupo):
+    return sorted(grupo.get("integrantes") or [], key=lambda i: i["id"])
+
+
 def nomes_integrantes(grupo):
-    return sorted((i["nome"] for i in grupo.get("integrantes") or []), key=str.lower)
+    return [i["nome"] for i in integrantes_do_grupo(grupo)]
 
 
 def salvar_integrantes(grupo_id, nomes):
@@ -120,7 +124,7 @@ def salvar_integrantes(grupo_id, nomes):
 
 
 def listar_grupos():
-    grupos = db().all("grupos", columns="*,integrantes(nome)", order="nome.asc")
+    grupos = db().all("grupos", columns="*,integrantes(id,nome)", order="nome.asc")
     tokens = db().all("tokens_api", columns="grupo_id,prefixo,ativo",
                       filters={"ativo": "eq.1"}, order="id.desc")
     por_grupo = {}
@@ -217,25 +221,79 @@ def criar_grupo():
                            novo_token={"grupo": dados["nome"], "token": token})
 
 
+def buscar_grupo(grupo_id):
+    grupo = db().one("grupos", columns="*,integrantes(id,nome)", filters={"id": f"eq.{grupo_id}"})
+    if grupo is not None:
+        grupo["integrantes"] = integrantes_do_grupo(grupo)
+    return grupo
+
+
 @admin_bp.route("/grupos/<int:grupo_id>/editar", methods=["GET", "POST"])
 @admin_autenticado
 def editar_grupo(grupo_id):
-    grupo = db().one("grupos", columns="*,integrantes(nome)", filters={"id": f"eq.{grupo_id}"})
+    grupo = buscar_grupo(grupo_id)
     if grupo is None:
         return "Grupo não encontrado", 404
-    grupo["integrantes"] = nomes_integrantes(grupo)
     if request.method == "POST":
         if not csrf_valido():
             return "Requisição inválida", 400
-        dados, integrantes, erro = dados_do_formulario()
+        # Integrantes são editados na tabela própria da página, não neste formulário.
+        dados, _, erro = dados_do_formulario()
         if not erro:
             db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
-            salvar_integrantes(grupo_id, integrantes)
             flash("Grupo atualizado.", "ok")
             return redirect(url_for("admin.grupos"))
         flash(erro, "erro")
-        grupo = {**grupo, **request.form, "integrantes": request.form.get("integrantes", "").splitlines()}
+        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url")}}
     return render_template("admin/grupo_editar.html", grupo=grupo)
+
+
+def nome_integrante_do_formulario():
+    nome = request.form.get("nome", "").strip()
+    if not nome:
+        flash("Informe o nome do integrante.", "erro")
+    return nome
+
+
+@admin_bp.post("/grupos/<int:grupo_id>/integrantes")
+@admin_autenticado
+def adicionar_integrante(grupo_id):
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    if db().one("grupos", columns="id", filters={"id": f"eq.{grupo_id}"}) is None:
+        return "Grupo não encontrado", 404
+    nome = nome_integrante_do_formulario()
+    if nome:
+        db().insert("integrantes", {"grupo_id": grupo_id, "nome": nome, "criado_em": agora_iso()})
+        flash(f"Integrante “{nome}” adicionado.", "ok")
+    return redirect(url_for("admin.editar_grupo", grupo_id=grupo_id) + "#integrantes")
+
+
+@admin_bp.post("/grupos/<int:grupo_id>/integrantes/<int:integrante_id>")
+@admin_autenticado
+def salvar_integrante(grupo_id, integrante_id):
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    nome = nome_integrante_do_formulario()
+    if nome:
+        alterados = db().update("integrantes", {"nome": nome},
+                                {"id": f"eq.{integrante_id}", "grupo_id": f"eq.{grupo_id}"})
+        if not alterados:
+            return "Integrante não encontrado", 404
+        flash(f"Integrante #{integrante_id} salvo.", "ok")
+    return redirect(url_for("admin.editar_grupo", grupo_id=grupo_id) + "#integrantes")
+
+
+@admin_bp.post("/grupos/<int:grupo_id>/integrantes/<int:integrante_id>/remover")
+@admin_autenticado
+def remover_integrante(grupo_id, integrante_id):
+    if not csrf_valido():
+        return "Requisição inválida", 400
+    removidos = db().delete("integrantes", {"id": f"eq.{integrante_id}", "grupo_id": f"eq.{grupo_id}"})
+    if not removidos:
+        return "Integrante não encontrado", 404
+    flash(f"Integrante “{removidos[0]['nome']}” removido.", "ok")
+    return redirect(url_for("admin.editar_grupo", grupo_id=grupo_id) + "#integrantes")
 
 
 @admin_bp.post("/grupos/<int:grupo_id>/novo-token")

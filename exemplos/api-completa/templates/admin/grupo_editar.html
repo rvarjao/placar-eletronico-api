@@ -6,9 +6,95 @@
   <form class="grupo" method="post" action="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}">
     {% include "admin/_campos_grupo.html" %}
     <div class="botoes">
-      <a class="botao secundario" style="background:#475569" href="{{ url_for('admin.grupos') }}">Cancelar</a>
+      <a class="botao secundario" style="background:#475569" href="{{ url_for('admin.grupos') }}">Voltar</a>
       <button type="submit">Salvar alterações</button>
     </div>
   </form>
 </section>
+
+<h2 id="integrantes">Integrantes</h2>
+<section class="painel">
+  <table class="integrantes-tabela">
+    <thead><tr><th class="col-id">ID</th><th>Nome</th><th class="col-acoes">Ações</th></tr></thead>
+    <tbody>
+    {% for integrante in grupo.integrantes %}
+      <tr>
+        <td class="col-id">#{{ integrante.id }}</td>
+        <td>
+          <input form="salvar-{{ integrante.id }}" name="nome" value="{{ integrante.nome }}"
+                 aria-label="Nome do integrante #{{ integrante.id }}" required>
+        </td>
+        <td class="col-acoes">
+          <div class="acoes">
+            <form id="salvar-{{ integrante.id }}" method="post"
+                  action="{{ url_for('admin.salvar_integrante', grupo_id=grupo.id, integrante_id=integrante.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="icone salvar" type="submit" title="Salvar" aria-label="Salvar integrante #{{ integrante.id }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </button>
+            </form>
+            <form method="post" class="form-remover" data-nome="{{ integrante.nome }}"
+                  action="{{ url_for('admin.remover_integrante', grupo_id=grupo.id, integrante_id=integrante.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="icone remover" type="submit" title="Remover" aria-label="Remover integrante #{{ integrante.id }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3">Nenhum integrante cadastrado.</td></tr>
+    {% endfor %}
+      <tr>
+        <td class="col-id">novo</td>
+        <td><input form="adicionar-integrante" name="nome" placeholder="Nome do novo integrante" aria-label="Nome do novo integrante" required></td>
+        <td class="col-acoes">
+          <form id="adicionar-integrante" method="post" action="{{ url_for('admin.adicionar_integrante', grupo_id=grupo.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="icone salvar" type="submit" title="Adicionar" aria-label="Adicionar integrante">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<dialog class="confirmar" id="confirmar-remocao" aria-labelledby="confirmar-titulo">
+  <h3 id="confirmar-titulo">Remover integrante?</h3>
+  <p>O integrante <strong id="confirmar-nome"></strong> será removido deste grupo. Essa ação não pode ser desfeita.</p>
+  <div class="botoes">
+    <button type="button" class="secundario" id="confirmar-cancelar">Cancelar</button>
+    <button type="button" class="perigo" id="confirmar-ok">Remover</button>
+  </div>
+</dialog>
+
+<script>
+  (function () {
+    const dialogo = document.getElementById("confirmar-remocao");
+    const nome = document.getElementById("confirmar-nome");
+    let pendente = null;
+    document.querySelectorAll("form.form-remover").forEach(function (form) {
+      form.addEventListener("submit", function (evento) {
+        if (form.dataset.confirmado) return;
+        evento.preventDefault();
+        pendente = form;
+        nome.textContent = form.dataset.nome;
+        dialogo.showModal();
+      });
+    });
+    document.getElementById("confirmar-cancelar").addEventListener("click", function () {
+      pendente = null;
+      dialogo.close();
+    });
+    document.getElementById("confirmar-ok").addEventListener("click", function () {
+      if (!pendente) return;
+      pendente.dataset.confirmado = "1";
+      dialogo.close();
+      pendente.submit();
+    });
+  })();
+</script>
 {% endblock %}

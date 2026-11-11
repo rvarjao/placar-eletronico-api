@@ -11,6 +11,8 @@
 <label class="largo">URL do projeto
   <input type="url" name="url" value="{{ (grupo.url or '') if grupo else '' }}" placeholder="https://usuario.github.io/projeto">
 </label>
+{% if not grupo %}
 <label class="largo">Integrantes (um por linha)
-  <textarea name="integrantes" rows="4" placeholder="Ana Souza&#10;Bruno Lima">{{ (grupo.integrantes or [])|join('\n') if grupo else '' }}</textarea>
+  <textarea name="integrantes" rows="4" placeholder="Ana Souza&#10;Bruno Lima"></textarea>
 </label>
+{% endif %}

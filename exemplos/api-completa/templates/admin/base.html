@@ -48,6 +48,20 @@
     .detalhe { color:var(--cinza); font-size:13px; margin-top:3px; }
     .integrantes { margin:0; padding-left:18px; }
     @media(max-width:700px) { form.grupo { grid-template-columns:1fr; } }
+    table.integrantes-tabela { white-space:normal; }
+    table.integrantes-tabela td { vertical-align:middle; }
+    table.integrantes-tabela .col-id { width:70px; color:var(--cinza); font-variant-numeric:tabular-nums; }
+    table.integrantes-tabela .col-acoes { width:110px; }
+    table.integrantes-tabela input { width:100%; min-width:0; }
+    .icone { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; padding:0; border-radius:8px; }
+    .icone svg { width:18px; height:18px; }
+    .icone.salvar { background:var(--azul); }
+    .icone.remover { background:var(--vermelho); }
+    dialog.confirmar { border:0; border-radius:12px; padding:22px; max-width:400px; width:calc(100% - 32px); box-shadow:0 20px 50px #0f172a40; }
+    dialog.confirmar::backdrop { background:#0f172a80; }
+    dialog.confirmar h3 { margin:0 0 8px; font-size:18px; }
+    dialog.confirmar p { margin:0 0 18px; color:var(--cinza); }
+    dialog.confirmar .botoes { display:flex; gap:8px; justify-content:flex-end; }
     .login { max-width:430px; margin:70px auto; }
     .login form { display:grid; gap:14px; }
     .login input { width:100%; min-width:0; }
