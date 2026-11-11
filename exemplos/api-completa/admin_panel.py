@@ -111,14 +111,23 @@ def logout():
     return redirect(url_for("admin.login"))
 
 
+def nomes_integrantes(grupo):
+    return sorted((i["nome"] for i in grupo.get("integrantes") or []), key=str.lower)
+
+
+def salvar_integrantes(grupo_id, nomes):
+    db().rpc("definir_integrantes_grupo", {"p_grupo_id": grupo_id, "p_nomes": nomes})
+
+
 def listar_grupos():
-    grupos = db().all("grupos", order="nome.asc")
+    grupos = db().all("grupos", columns="*,integrantes(nome)", order="nome.asc")
     tokens = db().all("tokens_api", columns="grupo_id,prefixo,ativo",
                       filters={"ativo": "eq.1"}, order="id.desc")
     por_grupo = {}
     for token in tokens:
         por_grupo.setdefault(token["grupo_id"], token)
     return [{**grupo,
+             "integrantes": nomes_integrantes(grupo),
              "prefixo": por_grupo.get(grupo["id"], {}).get("prefixo"),
              "token_ativo": por_grupo.get(grupo["id"], {}).get("ativo")}
             for grupo in grupos]
@@ -170,7 +179,7 @@ def grupos():
 
 
 def dados_do_formulario():
-    """Lê e valida os campos do grupo. Retorna (dados, erro)."""
+    """Lê e valida os campos do grupo. Retorna (dados, integrantes, erro)."""
     nome = request.form.get("nome", "").strip()
     turma = request.form.get("turma", "").strip()
     descricao = request.form.get("descricao", "").strip()
@@ -178,16 +187,16 @@ def dados_do_formulario():
     integrantes = [linha.strip() for linha in request.form.get("integrantes", "").splitlines()
                    if linha.strip()]
     if not nome:
-        return None, "Informe o nome do grupo."
+        return None, None, "Informe o nome do grupo."
     if url:
         # Sem esquema (ex.: "site.github.io") assume https; "javascript:" etc. é recusado.
         if not re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url, re.IGNORECASE):
             url = "https://" + url
         partes = urlparse(url)
         if partes.scheme not in ("http", "https") or not partes.netloc:
-            return None, "Informe uma URL válida (http:// ou https://)."
+            return None, None, "Informe uma URL válida (http:// ou https://)."
     return {"nome": nome, "turma": turma or None, "descricao": descricao or None,
-            "url": url or None, "integrantes": integrantes}, None
+            "url": url or None}, integrantes, None
 
 
 @admin_bp.post("/grupos")
@@ -195,12 +204,13 @@ def dados_do_formulario():
 def criar_grupo():
     if not csrf_valido():
         return "Requisição inválida", 400
-    dados, erro = dados_do_formulario()
+    dados, integrantes, erro = dados_do_formulario()
     if erro:
         flash(erro, "erro")
         return redirect(url_for("admin.grupos"))
     token = secrets.token_urlsafe(32)
     grupo = db().insert("grupos", {**dados, "criado_em": agora_iso()})
+    salvar_integrantes(grupo["id"], integrantes)
     db().insert("tokens_api", {"grupo_id": grupo["id"], "token_hash": hash_token(token),
                               "prefixo": token[:8], "criado_em": agora_iso()})
     return render_template("admin/grupos.html", grupos=listar_grupos(),
@@ -210,15 +220,17 @@ def criar_grupo():
 @admin_bp.route("/grupos/<int:grupo_id>/editar", methods=["GET", "POST"])
 @admin_autenticado
 def editar_grupo(grupo_id):
-    grupo = db().one("grupos", filters={"id": f"eq.{grupo_id}"})
+    grupo = db().one("grupos", columns="*,integrantes(nome)", filters={"id": f"eq.{grupo_id}"})
     if grupo is None:
         return "Grupo não encontrado", 404
+    grupo["integrantes"] = nomes_integrantes(grupo)
     if request.method == "POST":
         if not csrf_valido():
             return "Requisição inválida", 400
-        dados, erro = dados_do_formulario()
+        dados, integrantes, erro = dados_do_formulario()
         if not erro:
             db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
+            salvar_integrantes(grupo_id, integrantes)
             flash("Grupo atualizado.", "ok")
             return redirect(url_for("admin.grupos"))
         flash(erro, "erro")

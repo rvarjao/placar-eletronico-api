@@ -107,8 +107,8 @@ class SupabaseDB:
                             data={"chave": chave, "dados": dados},
                             prefer="resolution=merge-duplicates,return=minimal")
 
-    def rpc(self, name):
-        return self.request("POST", "rpc/" + name, data={})
+    def rpc(self, name, params=None):
+        return self.request("POST", "rpc/" + name, data=params or {})
 
 
 _db = None
