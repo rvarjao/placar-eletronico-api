@@ -91,12 +91,24 @@
     <section class="teams" id="equipes" aria-labelledby="equipes-title">
       <div class="section-heading"><p class="eyebrow">Projetos das turmas</p><h2 id="equipes-title">Acompanhe as equipes.</h2><p class="section-note">Os links serão ativados assim que cada projeto estiver publicado.</p></div>
       <div class="team-grid">
-        <article class="team-card live"><div class="team-top"><span>Equipe 01</span><span class="status">Disponível</span></div><h3>Associação U.C.</h3><p>Organização e acompanhamento do vôlei de praia.</p><a href="https://rodriguesdesahellen44-cmd.github.io/placar.volei/" target="_blank" rel="noopener noreferrer">Acessar projeto <span>↗</span></a></article>
-        <article class="team-card"><div class="team-top"><span>Equipe 02</span><span class="status">Aguardando publicação</span></div><h3>Placar de vôlei de praia</h3><p>Placar digital e gestão de partidas.</p><button type="button" disabled>Link em breve</button></article>
-        <article class="team-card"><div class="team-top"><span>Equipe 03</span><span class="status">Aguardando publicação</span></div><h3>Chaveamento</h3><p>Organização de confrontos para o torneio.</p><button type="button" disabled>Link em breve</button></article>
-        <article class="team-card live"><div class="team-top"><span>Equipe 06</span><span class="status">Disponível</span></div><h3>Arena</h3><p>Campeonato, placares e classificação.</p><a href="https://valada0.github.io/arena-/" target="_blank" rel="noopener noreferrer">Acessar projeto <span>↗</span></a></article>
-        <article class="team-card"><div class="team-top"><span>Projeto individual</span><span class="status">Aguardando publicação</span></div><h3>Interclasse Interativo</h3><p>Calendário, resultados e área administrativa.</p><button type="button" disabled>Link em breve</button></article>
-        <article class="team-card live"><div class="team-top"><span>Equipe 06</span><span class="status">Em desenvolvimento</span></div><h3>Mesa Pro</h3><p>Gerenciador de Interclasse de vôlei de mesa.</p><a href="https://github.com/KellEze/MEsa-pro" target="_blank" rel="noopener">Ver repositório <span>↗</span></a></article>
+        {% if equipes is none %}
+        <article class="team-card"><div class="team-top"><span>Equipes</span><span class="status">Indisponível</span></div><h3>Não foi possível carregar as equipes</h3><p>Tente novamente em alguns instantes.</p></article>
+        {% else %}
+        {% for equipe in equipes %}
+        <article class="team-card{{ ' live' if equipe.publicado else '' }}">
+          <div class="team-top"><span>{{ equipe.categoria }}</span><span class="status">{{ equipe.rotulo }}</span></div>
+          <h3>{{ equipe.nome }}</h3>
+          {% if equipe.descricao %}<p>{{ equipe.descricao }}</p>{% endif %}
+          {% if equipe.url %}
+          <a href="{{ equipe.url }}" target="_blank" rel="noopener noreferrer">{{ equipe.acao }} <span>↗</span></a>
+          {% else %}
+          <button type="button" disabled>Link em breve</button>
+          {% endif %}
+        </article>
+        {% else %}
+        <article class="team-card"><div class="team-top"><span>Equipes</span></div><h3>Nenhuma equipe cadastrada</h3><p>As equipes aparecerão aqui assim que forem cadastradas.</p></article>
+        {% endfor %}
+        {% endif %}
       </div>
     </section>
   </main>

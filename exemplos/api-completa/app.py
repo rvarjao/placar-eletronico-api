@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 from time import perf_counter
+from urllib.parse import urlparse
 
 from flask import Flask, g, jsonify, render_template, request
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
@@ -89,9 +90,40 @@ def monitorar_requisicao(resposta):
             app.logger.exception("Não foi possível registrar a requisição da API")
     return resposta
 
+def situacao_projeto(url):
+    """Classifica o link do grupo para o card da página inicial."""
+    if not url:
+        return {"rotulo": "Aguardando publicação", "acao": None, "publicado": False}
+    host = (urlparse(url).hostname or "").lower()
+    if host in ("github.com", "www.github.com"):
+        return {"rotulo": "Em desenvolvimento", "acao": "Ver repositório", "publicado": True}
+    return {"rotulo": "Disponível", "acao": "Acessar projeto", "publicado": True}
+
+
+def equipes_publicas():
+    grupos = db().all("grupos", columns="id,nome,descricao,url,integrantes(id)",
+                      filters={"ativo": "eq.1"}, order="id.asc")
+    equipes = []
+    for posicao, grupo in enumerate(grupos, start=1):
+        individual = len(grupo.get("integrantes") or []) == 1
+        equipes.append({
+            "nome": grupo["nome"],
+            "descricao": grupo.get("descricao"),
+            "url": grupo.get("url"),
+            "categoria": "Projeto individual" if individual else f"Equipe {posicao:02d}",
+            **situacao_projeto(grupo.get("url")),
+        })
+    return equipes
+
+
 @app.get("/")
 def inicio():
-    return render_template("index.html")
+    try:
+        equipes = equipes_publicas()
+    except SupabaseError:
+        app.logger.exception("Não foi possível carregar as equipes da página inicial")
+        equipes = None
+    return render_template("index.html", equipes=equipes)
 
 
 def instalar_dependencias():
