@@ -8,12 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="#inicio" aria-label="Projeto Interclasse 2026">
-      <img src="https://colegiosinerge.com.br/wp-content/uploads/2026/06/Colegio-Sinerge-2.png" alt="Colégio Sinerge">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Colégio Sinerge">
       <span></span>
       <strong>Projeto<br>Interclasse</strong>
     </a>
@@ -112,6 +114,6 @@
       </div>
     </section>
   </main>
-  <footer><a href="https://colegiosinerge.com.br/" target="_blank" rel="noopener"><img src="https://colegiosinerge.com.br/wp-content/uploads/2026/06/Colegio-Sinerge-2.png" alt="Colégio Sinerge"></a><p>Projeto Interclasse 2026 · Desenvolvimento de Sistemas</p><a href="#inicio">Voltar ao topo ↑</a></footer>
+  <footer><a href="https://colegiosinerge.com.br/" target="_blank" rel="noopener"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Colégio Sinerge"></a><p>Projeto Interclasse 2026 · Desenvolvimento de Sistemas</p><a href="#inicio">Voltar ao topo ↑</a></footer>
 </body>
 </html>
