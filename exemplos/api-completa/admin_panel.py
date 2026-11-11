@@ -1,10 +1,12 @@
 import hashlib
 import hmac
 import os
+import re
 import secrets
 from collections import Counter
 from datetime import datetime, timezone
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from db_supabase import db, SupabaseError
@@ -167,22 +169,61 @@ def grupos():
     return render_template("admin/grupos.html", grupos=listar_grupos(), novo_token=None)
 
 
+def dados_do_formulario():
+    """Lê e valida os campos do grupo. Retorna (dados, erro)."""
+    nome = request.form.get("nome", "").strip()
+    turma = request.form.get("turma", "").strip()
+    descricao = request.form.get("descricao", "").strip()
+    url = request.form.get("url", "").strip()
+    integrantes = [linha.strip() for linha in request.form.get("integrantes", "").splitlines()
+                   if linha.strip()]
+    if not nome:
+        return None, "Informe o nome do grupo."
+    if url:
+        # Sem esquema (ex.: "site.github.io") assume https; "javascript:" etc. é recusado.
+        if not re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url, re.IGNORECASE):
+            url = "https://" + url
+        partes = urlparse(url)
+        if partes.scheme not in ("http", "https") or not partes.netloc:
+            return None, "Informe uma URL válida (http:// ou https://)."
+    return {"nome": nome, "turma": turma or None, "descricao": descricao or None,
+            "url": url or None, "integrantes": integrantes}, None
+
+
 @admin_bp.post("/grupos")
 @admin_autenticado
 def criar_grupo():
     if not csrf_valido():
         return "Requisição inválida", 400
-    nome = request.form.get("nome", "").strip()
-    turma = request.form.get("turma", "").strip()
-    if not nome:
-        flash("Informe o nome do grupo.", "erro")
+    dados, erro = dados_do_formulario()
+    if erro:
+        flash(erro, "erro")
         return redirect(url_for("admin.grupos"))
     token = secrets.token_urlsafe(32)
-    grupo = db().insert("grupos", {"nome": nome, "turma": turma or None, "criado_em": agora_iso()})
+    grupo = db().insert("grupos", {**dados, "criado_em": agora_iso()})
     db().insert("tokens_api", {"grupo_id": grupo["id"], "token_hash": hash_token(token),
                               "prefixo": token[:8], "criado_em": agora_iso()})
     return render_template("admin/grupos.html", grupos=listar_grupos(),
-                           novo_token={"grupo": nome, "token": token})
+                           novo_token={"grupo": dados["nome"], "token": token})
+
+
+@admin_bp.route("/grupos/<int:grupo_id>/editar", methods=["GET", "POST"])
+@admin_autenticado
+def editar_grupo(grupo_id):
+    grupo = db().one("grupos", filters={"id": f"eq.{grupo_id}"})
+    if grupo is None:
+        return "Grupo não encontrado", 404
+    if request.method == "POST":
+        if not csrf_valido():
+            return "Requisição inválida", 400
+        dados, erro = dados_do_formulario()
+        if not erro:
+            db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
+            flash("Grupo atualizado.", "ok")
+            return redirect(url_for("admin.grupos"))
+        flash(erro, "erro")
+        grupo = {**grupo, **request.form, "integrantes": request.form.get("integrantes", "").splitlines()}
+    return render_template("admin/grupo_editar.html", grupo=grupo)
 
 
 @admin_bp.post("/grupos/<int:grupo_id>/novo-token")

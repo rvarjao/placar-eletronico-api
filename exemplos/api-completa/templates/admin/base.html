@@ -38,6 +38,16 @@
     .token { padding:14px; border:1px solid #86efac; background:#f0fdf4; border-radius:9px; margin-bottom:18px; }
     .token code { display:block; padding:10px; margin-top:8px; background:#052e16; color:#dcfce7; border-radius:6px; overflow-wrap:anywhere; }
     .alerta { padding:11px 13px; border-radius:8px; margin-bottom:16px; background:#fee2e2; color:#991b1b; }
+    .alerta.ok { background:#dcfce7; color:#166534; }
+    textarea { width:100%; padding:10px 11px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; resize:vertical; }
+    form.grupo { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    form.grupo .largo { grid-column:1 / -1; }
+    form.grupo input { min-width:0; width:100%; }
+    form.grupo .botoes { grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end; }
+    td.quebra { white-space:normal; min-width:220px; max-width:360px; }
+    .detalhe { color:var(--cinza); font-size:13px; margin-top:3px; }
+    .integrantes { margin:0; padding-left:18px; }
+    @media(max-width:700px) { form.grupo { grid-template-columns:1fr; } }
     .login { max-width:430px; margin:70px auto; }
     .login form { display:grid; gap:14px; }
     .login input { width:100%; min-width:0; }
@@ -67,7 +77,7 @@
   {% endif %}
   <main>
     {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
-      <div class="alerta">{{ mensagem }}</div>
+      <div class="alerta {{ categoria }}">{{ mensagem }}</div>
     {% endfor %}
     {% block content %}{% endblock %}
   </main>

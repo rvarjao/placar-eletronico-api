@@ -16,31 +16,31 @@
 
 <section class="painel">
   <h2 style="margin-top:0">Cadastrar grupo</h2>
-  <form class="linha" method="post" action="{{ url_for('admin.criar_grupo') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Nome do grupo
-      <input name="nome" placeholder="Ex.: Grupo 1" required>
-    </label>
-    <label>Turma
-      <input name="turma" placeholder="Ex.: 2º DS A">
-    </label>
-    <button type="submit">Criar grupo e token</button>
+  <form class="grupo" method="post" action="{{ url_for('admin.criar_grupo') }}">
+    {% with grupo=None %}{% include "admin/_campos_grupo.html" %}{% endwith %}
+    <div class="botoes"><button type="submit">Criar grupo e token</button></div>
   </form>
 </section>
 
 <h2>Grupos cadastrados</h2>
 <section class="painel">
   <table>
-    <thead><tr><th>Grupo</th><th>Turma</th><th>Grupo</th><th>Token atual</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Status</th><th>Token atual</th><th>Ações</th></tr></thead>
     <tbody>
     {% for grupo in grupos %}
       <tr>
-        <td><strong>{{ grupo.nome }}</strong></td>
+        <td class="quebra">
+          <strong>{{ grupo.nome }}</strong>
+          {% if grupo.descricao %}<div class="detalhe">{{ grupo.descricao }}</div>{% endif %}
+          {% if grupo.url %}<div class="detalhe"><a href="{{ grupo.url }}" target="_blank" rel="noopener noreferrer">{{ grupo.url }}</a></div>{% endif %}
+        </td>
         <td>{{ grupo.turma or "—" }}</td>
+        <td>{% if grupo.integrantes %}<ul class="integrantes">{% for nome in grupo.integrantes %}<li>{{ nome }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
         <td><span class="status {{ 'ok' if grupo.ativo else 'erro' }}">{{ "Ativo" if grupo.ativo else "Inativo" }}</span></td>
         <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
           <div class="acoes">
+            <a class="botao" href="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}">Editar</a>
             <form method="post" action="{{ url_for('admin.novo_token', grupo_id=grupo.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="secundario" type="submit">Gerar novo token</button>
@@ -53,7 +53,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="5">Nenhum grupo cadastrado.</td></tr>
+      <tr><td colspan="6">Nenhum grupo cadastrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>

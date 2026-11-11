@@ -8,7 +8,7 @@ No Supabase Dashboard → SQL Editor, execute [supabase/schema.sql](supabase/sch
 
 Tabelas:
 - `placares`: placares e cronômetro;
-- `grupos`: grupos de alunos;
+- `grupos`: grupos de alunos (nome, turma, descrição do projeto, URL e integrantes);
 - `tokens_api`: hashes dos tokens;
 - `requisicoes_api`: monitoramento, com `placar_id` opcional;
 - `estado_aplicacoes`: estado do Campeonato, detalhes adicionais do Placar e configuração de conexão.

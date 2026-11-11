@@ -1,0 +1,14 @@
+{% extends "admin/base.html" %}
+{% block title %}Editar grupo{% endblock %}
+{% block content %}
+<h1>Editar grupo</h1>
+<section class="painel">
+  <form class="grupo" method="post" action="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}">
+    {% include "admin/_campos_grupo.html" %}
+    <div class="botoes">
+      <a class="botao secundario" style="background:#475569" href="{{ url_for('admin.grupos') }}">Cancelar</a>
+      <button type="submit">Salvar alterações</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
