@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from db_supabase import db, SupabaseError
 
 
@@ -241,9 +241,30 @@ def editar_grupo(grupo_id):
         # Integrantes são editados na tabela própria da página, não neste formulário.
         dados, _, erro = dados_do_formulario()
         if not erro:
-            db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
-            flash("Grupo atualizado.", "ok")
-            return redirect(url_for("admin.grupos"))
+            try:
+                alterados = db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
+            except SupabaseError as exc:
+                current_app.logger.exception("Falha ao salvar grupo %s", grupo_id)
+                codigo = exc.codigo
+                if codigo in ("PGRST204", "42703"):
+                    erro = "O banco não reconheceu uma coluna do formulário. Verifique a migration de visibilidade (publico) e o cache de esquema do Supabase."
+                elif codigo == "23505":
+                    erro = "Já existe um registro com um dos valores informados. Verifique os dados do grupo."
+                elif codigo in ("22P02", "42804"):
+                    erro = "O tipo de um campo não é compatível com o banco. Verifique os tipos das colunas ativo e publico."
+                elif codigo == "23514":
+                    erro = "Um valor não atende às restrições do banco. Verifique os campos informados."
+                else:
+                    erro = "Não foi possível salvar o grupo no Supabase."
+                if codigo:
+                    erro += f" (Código: {codigo})"
+                elif exc.http_status:
+                    erro += f" (HTTP {exc.http_status})"
+            else:
+                if alterados:
+                    flash("Grupo atualizado.", "ok")
+                    return redirect(url_for("admin.grupos"))
+                erro = "Grupo não encontrado ou alteração não aplicada."
         flash(erro, "erro")
         grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url")},
                  "publico": int(request.form.get("publico") == "1"),
