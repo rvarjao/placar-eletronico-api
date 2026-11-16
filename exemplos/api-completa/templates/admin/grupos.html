@@ -25,7 +25,7 @@
 <h2>Grupos cadastrados</h2>
 <section class="painel">
   <table>
-    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Habilitação</th><th>Visibilidade</th><th>Token atual</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Habilitação</th><th>Visibilidade</th><th>Origem / CORS</th><th>Token atual</th><th>Ações</th></tr></thead>
     <tbody>
     {% for grupo in grupos %}
       <tr>
@@ -53,6 +53,7 @@
           </form>
         </td>
         <td><span class="status">{{ "Público" if grupo.publico else "Privado" }}</span></td>
+        <td class="quebra"><span class="status">{{ "Restrita" if grupo.restringir_origem else "Servidor permitido" }}</span><div class="detalhe">{{ grupo.origem_permitida or "Sem origem externa" }}</div></td>
         <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
           <div class="acoes acoes-grupo">
@@ -65,7 +66,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="7">Nenhum grupo cadastrado.</td></tr>
+      <tr><td colspan="8">Nenhum grupo cadastrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>

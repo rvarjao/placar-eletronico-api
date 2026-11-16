@@ -25,7 +25,7 @@
         <ol class="guide-steps">
           <li><b>01</b><h3>Abra seu projeto</h3><p>Use seu editor com IA ou compartilhe os arquivos relevantes com seu assistente. Não envie arquivos .env nem segredos.</p></li>
           <li><b>02</b><h3>Copie o prompt</h3><p>Envie o texto abaixo com o código existente. Peça que a IA analise e adapte o projeto, sem refazê-lo.</p></li>
-          <li><b>03</b><h3>Configure o token</h3><p>Use o token individual fornecido pelo professor na configuração protegida do servidor.</p></li>
+          <li><b>03</b><h3>Configure o token</h3><p>Use o token individual no servidor ou informe-o na tela de operação do frontend. Para acesso direto, confirme sua origem com o professor.</p></li>
           <li><b>04</b><h3>Teste a integração</h3><p>Crie uma partida, salve o ID, atualize o placar e confira o resultado no monitor.</p></li>
         </ol>
       </section>
@@ -51,19 +51,19 @@ Endpoints (relativos à URL base):
 - GET /placares/{id}: consulta um placar (200).
 - PATCH /placares/{id}: atualiza campos específicos (200). Exemplo: {"pontos_a":21,"pontos_b":18,"status":"em_andamento","tempo_partida":600}.
 
-A criação retorna um objeto com id, nome_equipe_a, nome_equipe_b, modalidade, status, pontos_a, pontos_b e tempo_partida. Os valores iniciais são status "aguardando", pontos 0 e tempo 0. Os únicos campos aceitos pelo PATCH são pontos_a, pontos_b, status e tempo_partida. Pontos e tempo são inteiros não negativos; tempo em segundos. Status aceitos: aguardando, em_andamento, encerrado. Faça o mapeamento dos nomes e estados do meu sistema para esse contrato, sem inventar campos ou rotas.
+A criação retorna um objeto com id, grupo_id (atribuído automaticamente pelo servidor), nome_equipe_a, nome_equipe_b, modalidade, status, pontos_a, pontos_b e tempo_partida. Os valores iniciais são status "aguardando", pontos 0 e tempo 0. Os únicos campos aceitos pelo PATCH são pontos_a, pontos_b, status e tempo_partida. Pontos e tempo são inteiros não negativos; tempo em segundos. Status aceitos: aguardando, em_andamento, encerrado. Faça o mapeamento dos nomes e estados do meu sistema para esse contrato, sem inventar campos ou rotas.
 
 Código de referência: https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa
 Monitor público: https://rvarjao.pythonanywhere.com/monitor
 
 ## Implementação
-1. Centralize URL, configuração e cliente HTTP reutilizável. Use variável de ambiente ou configuração protegida do servidor para o token. Não exponha o token no JavaScript público, bundle, HTML, localStorage ou repositório. Se o projeto for somente frontend (GitHub Pages, por exemplo), explique que não é possível esconder um token no navegador e implemente ou proponha um intermediário servidor mínimo e autenticado (por exemplo, função serverless ou Supabase Edge Function), com o token em segredo do servidor. Restrinja o intermediário às operações do grupo e aos IDs de suas partidas; não crie um proxy aberto. Nunca use a service role do Supabase no navegador. Verifique CORS entre frontend e intermediário; não tente contornar a proteção do navegador. O backend existente pode fazer chamadas diretamente à API.
+1. Centralize a URL e o cliente HTTP. Se o projeto tem backend, mantenha o token em variável de ambiente no servidor. Se for exclusivamente frontend (GitHub Pages), use fetch diretamente na API: solicite ao professor o cadastro da origem exata (protocolo, domínio e porta, sem caminho) e a habilitação da restrição de origem. Crie um campo de senha na interface para o operador informar o token individual em tempo de execução; mantenha-o somente em memória e limpe-o ao sair. Não publique o token no JavaScript, HTML, bundle, localStorage, sessionStorage, logs ou repositório. Não envie o token real à IA. O navegador envia Origin automaticamente e faz o preflight OPTIONS; não tente definir Origin manualmente nem use mode: no-cors. CORS não protege contra cópia do token ou clientes externos que falsificam Origin; a autenticação e a propriedade do placar são verificadas no servidor. Se precisar de acesso permanente sem operador, utilize um backend intermediário autenticado com segredo no servidor. Nunca use a service role do Supabase no navegador.
 2. Associe cada partida local ao ID retornado pela criação. Persista esse ID junto à partida. Verifique se já existe antes de criar, impeça cliques simultâneos e não crie outro placar ao recarregar a página. Se o POST falhar de modo ambíguo, não repita automaticamente: verifique o resultado antes de tentar de novo.
 3. Sincronize alterações relevantes ao iniciar a partida, mudar pontos, atualizar tempo e encerrar. Envie apenas os campos válidos e alterados, com controle de frequência para o relógio; não envie uma requisição a cada segundo. Evite concorrência e respostas fora de ordem. Dados específicos da modalidade (sets, faltas, jogadores, cartões) continuam no sistema existente.
 4. Consulte o mesmo ID para recuperar o estado. Se houver telão ou necessidade de atualização periódica, faça polling inicialmente a cada 15 segundos, evitando chamadas sobrepostas e interrompendo ao fechar a tela. Não escreva repetidamente dados que não mudaram.
-5. Trate HTTP 400, 401, 404, 503, outros erros HTTP e falhas de rede. Mostre mensagens úteis e só indique sincronização bem-sucedida após confirmação. Preserve o estado local quando possível e permita nova tentativa segura.
+5. Trate HTTP 400, 401, 403, 404, 503, outros erros HTTP e falhas de rede. Mostre mensagens úteis e só indique sincronização bem-sucedida após confirmação. Preserve o estado local quando possível e permita nova tentativa segura.
 6. Adicione indicador de conexão, sincronização, erro e última sincronização bem-sucedida, se compatível com a interface existente.
-7. Utilize apenas o token do meu grupo e os IDs das minhas partidas. A listagem é compartilhada; não altere nem exclua placares de outros grupos. Não utilize credenciais administrativas.
+7. Utilize apenas o token do meu grupo e os IDs das minhas partidas. A listagem é compartilhada; somente o grupo proprietário pode alterar ou excluir seus placares. A API retorna HTTP 403 para uma tentativa de escrita em placar alheio. Não utilize credenciais administrativas.
 
 ## Testes
 - Configure o token fora do código público.
@@ -72,7 +72,7 @@ Monitor público: https://rvarjao.pythonanywhere.com/monitor
 - Consulte esse ID, inicie a partida, altere a pontuação e encerre.
 - Recarregue a aplicação e confirme que o mesmo ID é mantido.
 - Confira a partida e a atividade no monitor público, se o grupo estiver público.
-- Teste token inválido e falha de conexão sem alterar placares alheios.
+- Teste token inválido, origem não autorizada e falha de conexão sem alterar placares alheios. Confira no DevTools se OPTIONS retorna 204 e se a chamada real retorna 200/201.
 
 ## Entrega
 Explique o plano, implemente as mudanças nos arquivos existentes e apresente os arquivos modificados, configuração segura do token, como executar e testar, funcionalidades integradas e limitações restantes. Se não tiver acesso ao código, solicite os arquivos necessários antes de inventar uma implementação.
@@ -104,12 +104,70 @@ Explique o plano, implemente as mudanças nos arquivos existentes e apresente os
   "tempo_partida": 600
 }</code></pre>
           <p>Envie apenas os campos alterados. Status: <code>aguardando</code>, <code>em_andamento</code>, <code>encerrado</code>. Pontos e tempo em segundos são inteiros não negativos. Sets, faltas e outras estatísticas permanecem no seu sistema.</p>
-          <p>Erros comuns: 400 (dados inválidos), 401 (token inválido), 404 (placar inexistente), 503 (dependência indisponível). Confira o <a href="https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa" target="_blank" rel="noopener noreferrer">código de referência da API publicada</a>.</p>
+          <p>Erros comuns: 400 (dados inválidos), 401 (token inválido), 403 (origem ou operação não autorizada), 404 (placar inexistente), 503 (dependência indisponível). Confira o <a href="https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa" target="_blank" rel="noopener noreferrer">código de referência da API publicada</a>.</p>
         </div>
       </section>
       <section class="guide-section" id="exemplos-codigo" aria-labelledby="codigo-title">
         <p class="eyebrow">Exemplos práticos</p><h2 id="codigo-title">Escolha sua tecnologia.</h2>
-        <div class="guide-notice"><strong>Projetos hospedados no GitHub Pages:</strong> um token no navegador não é secreto. Use um intermediário servidor autenticado e restrito ao grupo, com o token em segredo do servidor, por exemplo uma Supabase Edge Function. Os exemplos abaixo são de código executado no servidor, não no navegador.</div>
+        <div class="guide-notice"><strong>Projetos hospedados no GitHub Pages:</strong> um token no navegador não é secreto. A API aceita chamadas diretas do navegador quando a origem está cadastrada para o grupo. O operador informa o token em tempo de execução; nunca o publique no código. CORS não impede o uso de um token copiado por clientes externos. Para acesso automático sem operador, use um backend autenticado com segredo no servidor.</div>
+        <div class="guide-panel">
+          <div class="guide-toolbar"><h3>JavaScript puro · GitHub Pages</h3><button class="button primary copy-button" type="button" data-copy="browser-code">Copiar código</button></div>
+          <p>Solicite ao professor o cadastro de <code>https://usuario.github.io</code> (sem <code>/repositorio/</code>). Para desenvolvimento local, a origem inclui a porta, por exemplo <code>http://localhost:5500</code>; solicite a troca temporária se necessário. Cada grupo possui uma origem cadastrada por vez.</p>
+          <pre><code id="browser-code">// JavaScript no navegador — execute a partir da origem cadastrada.
+// O operador informa o token na interface; não grave no código ou localStorage.
+const BASE = 'https://rvarjao.pythonanywhere.com/api';
+let token = '';
+
+function configurarToken(valor) {
+  token = valor.trim(); // apenas em memória; desaparece ao recarregar
+}
+
+async function api(caminho, metodo = 'GET', dados) {
+  if (!token) throw new Error('Informe o token do grupo');
+  const resposta = await fetch(BASE + caminho, {
+    method: metodo,
+    headers: {
+      Authorization: 'Bearer ' + token,
+      ...(dados ? {'Content-Type': 'application/json'} : {})
+    },
+    ...(dados ? {body: JSON.stringify(dados)} : {}),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() =&gt; ({}));
+    throw new Error(erro.erro || 'API: HTTP ' + resposta.status);
+  }
+  return resposta.json();
+}
+
+// Vincule a um campo type="password" da sua interface.
+// configurarToken(campoToken.value); campoToken.value = '';
+
+// No botão de criação (apenas uma vez por partida):
+async function criarPartida() {
+  const placar = await api('/placares/criar', 'POST', {
+    nome_equipe_a: 'Meu grupo — Equipe A',
+    nome_equipe_b: 'Meu grupo — Equipe B',
+    modalidade: 'volei'
+  });
+  return placar.id; // persista este ID, não o token
+}
+
+// Use o ID já associado à partida.
+async function atualizarPartida(id) {
+  return api('/placares/' + id, 'PATCH', {
+    pontos_a: 1, status: 'em_andamento'
+  });
+}
+
+async function consultarPartida(id) {
+  return api('/placares/' + id);
+}
+
+// Ao sair da área de operação:
+function desconectar() { token = ''; }</code></pre>
+          <p>O navegador envia <code>Origin</code> e executa automaticamente o preflight <code>OPTIONS</code>. Não use <code>mode: no-cors</code>. Se o navegador bloquear a chamada, confira a origem exata e a configuração com o professor. O token continua necessário e não deve ser compartilhado com visitantes.</p>
+        </div>
         <div class="guide-panel">
           <div class="guide-toolbar"><h3>JavaScript · Node.js</h3><button class="button primary copy-button" type="button" data-copy="js-code">Copiar código</button></div>
           <pre><code id="js-code">// Node.js 18+ (servidor). Nunca coloque o token no frontend público.
@@ -184,7 +242,7 @@ def atualizar_partida(id_placar):
     })
     return api(f"/placares/{id_placar}")</code></pre>
         </div>
-        <p>Configure <code>INTERCLASSE_TOKEN</code> como variável de ambiente ou segredo do servidor. Os exemplos definem funções; adapte e chame-as nos eventos do seu projeto, armazenando o ID da criação. Não execute uma nova criação a cada atualização.</p>
+        <p>Para os exemplos Node.js e Python, configure <code>INTERCLASSE_TOKEN</code> como variável de ambiente ou segredo do servidor. O grupo deve permitir chamadas servidor a servidor (restrição de origem desativada). Os exemplos definem funções; adapte e chame-as nos eventos do seu projeto, armazenando o ID da criação. Não execute uma nova criação a cada atualização.</p>
       </section>
       <section class="guide-section" id="checklist" aria-labelledby="checklist-title">
         <p class="eyebrow">Validação</p><h2 id="checklist-title">Teste antes de entregar.</h2>

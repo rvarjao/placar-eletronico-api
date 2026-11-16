@@ -13,6 +13,7 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from admin_panel import admin_bp, autenticar_token, registrar_requisicao
 from db_supabase import db, SupabaseError
 from monitor_publico import monitor_bp
+from cors_api import origem_requisicao, origem_cadastrada, preflight, validar_origem_grupo, aplicar_cors
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
@@ -31,6 +32,20 @@ def ler():
 
 def localizar(id):
     return db().one("placares", filters={"id": f"eq.{id}"})
+
+def filtro_placar_proprio(id):
+    """Verifica propriedade e restringe a escrita também na consulta ao banco."""
+    grupo_id = g.grupo_api_id
+    if grupo_id is None:
+        return None, erro("Use um token de grupo para modificar placares", 403)
+    placar = localizar(id)
+    if placar is None:
+        return None, erro("Placar não encontrado", 404)
+    g.placar_id = id
+    if placar.get("grupo_id") != grupo_id:
+        return None, erro("Este placar não pertence ao seu grupo", 403)
+    return {"id": f"eq.{id}", "grupo_id": f"eq.{grupo_id}"}, None
+
 
 def erro(mensagem, status):
     return jsonify({"erro": mensagem}), status
@@ -58,6 +73,15 @@ def autenticar_requisicao():
     if not request.path.startswith("/api/"):
         return None
 
+    origem = origem_requisicao()
+    g.cors_origem = None
+    if request.method == "OPTIONS":
+        return preflight(origem) if request.headers.get("Access-Control-Request-Method") else ("", 204)
+    # Permite que uma origem cadastrada leia inclusive erros HTTP; a autorização
+    # efetiva continua vinculada ao token e à origem do respectivo grupo.
+    if origem_cadastrada(origem):
+        g.cors_origem = origem
+
     autorizacao = request.headers.get("Authorization", "")
     token = autorizacao.removeprefix("Bearer ").strip() if autorizacao.startswith("Bearer ") else ""
     grupo = autenticar_token(token)
@@ -65,10 +89,12 @@ def autenticar_requisicao():
     if grupo is not None:
         g.grupo_api_id = grupo["id"]
         g.grupo_api_nome = grupo["nome"]
+        if not validar_origem_grupo(grupo, origem):
+            return erro("Origem não autorizada para este grupo", 403)
         return None
 
     chave_legada = request.headers.get("X-API-Key", "")
-    if API_KEY and chave_legada and hmac.compare_digest(chave_legada, API_KEY):
+    if origem is None and API_KEY and chave_legada and hmac.compare_digest(chave_legada, API_KEY):
         return None
 
     return erro("Token do grupo ausente ou inválido", 401)
@@ -77,6 +103,9 @@ def autenticar_requisicao():
 @app.after_request
 def monitorar_requisicao(resposta):
     if request.path.startswith("/api/"):
+        aplicar_cors(resposta)
+        if request.method == "OPTIONS":
+            return resposta
         inicio = getattr(g, "inicio_requisicao", perf_counter())
         duracao_ms = max(0, round((perf_counter() - inicio) * 1000))
         try:
@@ -221,11 +250,14 @@ def consultar(id):
 
 @app.post("/api/placares/criar")
 def criar():
+    if g.grupo_api_id is None:
+        return erro("Use um token de grupo para criar placares", 403)
     dados = request.get_json(silent=True)
     mensagem = validar_equipes(dados)
     if mensagem:
         return erro(mensagem, 400)
     placar = db().insert("placares", {**{c: dados[c].strip() for c in CAMPOS},
+                                      "grupo_id": g.grupo_api_id,
                                       "status": "aguardando", "pontos_a": 0,
                                       "pontos_b": 0, "tempo_partida": 0})
     g.placar_id = placar["id"]
@@ -233,6 +265,9 @@ def criar():
 
 @app.put("/api/placares/<int:id>")
 def substituir(id):
+    filtros, falha = filtro_placar_proprio(id)
+    if falha is not None:
+        return falha
     dados = request.get_json(silent=True)
     mensagem = validar_equipes(dados)
     if mensagem:
@@ -242,7 +277,7 @@ def substituir(id):
     novo = {**{c: dados[c].strip() for c in CAMPOS},
             "status": dados["status"], "pontos_a": dados["pontos_a"],
             "pontos_b": dados["pontos_b"], "tempo_partida": dados["tempo_partida"]}
-    atualizado = db().update("placares", novo, {"id": f"eq.{id}"})
+    atualizado = db().update("placares", novo, filtros)
     if not atualizado:
         return erro("Placar não encontrado", 404)
     g.placar_id = id
@@ -250,6 +285,9 @@ def substituir(id):
 
 @app.patch("/api/placares/<int:id>")
 def alterar(id):
+    filtros, falha = filtro_placar_proprio(id)
+    if falha is not None:
+        return falha
     dados = request.get_json(silent=True)
     permitidos = {"pontos_a", "pontos_b", "status", "tempo_partida"}
     if not isinstance(dados, dict) or not dados or set(dados) - permitidos:
@@ -261,7 +299,7 @@ def alterar(id):
         return erro("Status inválido", 400)
     if "tempo_partida" in dados and not tempo_valido(dados):
         return erro("tempo_partida deve ser inteiro não negativo", 400)
-    atualizado = db().update("placares", dados, {"id": f"eq.{id}"})
+    atualizado = db().update("placares", dados, filtros)
     if not atualizado:
         return erro("Placar não encontrado", 404)
     g.placar_id = id
@@ -269,11 +307,15 @@ def alterar(id):
 
 @app.delete("/api/placares/<int:id>")
 def excluir(id):
+    filtros, falha = filtro_placar_proprio(id)
+    if falha is not None:
+        return falha
     # A FK do histórico usa ON DELETE SET NULL para preservar o log.
-    excluidos = db().delete("placares", {"id": f"eq.{id}"})
+    excluidos = db().delete("placares", filtros)
     if not excluidos:
         return erro("Placar não encontrado", 404)
     # O placar foi removido: histórico novo também fica sem FK.
+    g.placar_id = None
     return "", 204
 
 @app.errorhandler(SupabaseError)
