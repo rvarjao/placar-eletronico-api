@@ -24,6 +24,7 @@
       <a href="#jornada">Jornada</a>
       <a href="#exemplos">Exemplos</a>
       <a href="#equipes">Equipes</a>
+      <a href="{{ url_for('monitor.pagina') }}">Monitor de placares</a>
       <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
     </nav>
   </header>
@@ -36,6 +37,7 @@
         <p class="lead">No Projeto Interclasse, as equipes criam sistemas para organizar partidas, registrar placares e aproximar a escola do esporte com tecnologia feita por estudantes.</p>
         <div class="hero-actions">
           <a class="button primary" href="#equipes">Conheça as equipes <span aria-hidden="true">↓</span></a>
+          <a class="button text" href="{{ url_for('monitor.pagina') }}">Acompanhar placares</a>
           <a class="button text" href="#sobre">Como funciona</a>
         </div>
       </div>
