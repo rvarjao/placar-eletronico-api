@@ -40,15 +40,15 @@
         <td><span class="status">{{ "Público" if grupo.publico else "Privado" }}</span></td>
         <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
-          <div class="acoes">
-            <a class="botao" href="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}">Editar</a>
+          <div class="acoes acoes-grupo">
+            <a class="botao icone" href="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}" title="Editar" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg></a>
             <form method="post" action="{{ url_for('admin.novo_token', grupo_id=grupo.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="secundario" type="submit">Gerar novo token</button>
+              <button class="icone secundario" type="submit" title="Gerar novo token" aria-label="Gerar novo token"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 9-9M17 6l3 3m-6 0 3 3"/></svg></button>
             </form>
             <form method="post" action="{{ url_for('admin.alternar_grupo', grupo_id=grupo.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="{{ 'perigo' if grupo.ativo else '' }}" type="submit">{{ "Desativar" if grupo.ativo else "Ativar" }}</button>
+              <button class="icone {{ 'perigo' if grupo.ativo else 'habilitar' }}" type="submit" title="{{ 'Desativar' if grupo.ativo else 'Ativar' }}" aria-label="{{ 'Desativar' if grupo.ativo else 'Ativar' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button>
             </form>
           </div>
         </td>
