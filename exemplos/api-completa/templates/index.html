@@ -49,6 +49,28 @@
       </div>
     </section>
 
+    <section class="teams" id="monitor" aria-labelledby="monitor-title">
+      <div class="section-heading">
+        <p class="eyebrow">Acompanhamento em tempo real</p>
+        <h2 id="monitor-title">O Interclasse em jogo.</h2>
+        <p class="section-note">Acompanhe os placares registrados na API centralizada e a integração dos sistemas desenvolvidos pelas equipes.</p>
+      </div>
+      <div class="team-grid">
+        <article class="team-card live">
+          <div class="team-top"><span>Monitor público</span><span class="status">Sem login</span></div>
+          <h3>Placares e partidas</h3>
+          <p>Confira as pontuações, as modalidades e o andamento das partidas, com atualização automática dos dados.</p>
+          <a href="{{ url_for('monitor.pagina') }}">Acessar monitor de placares <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="team-card live">
+          <div class="team-top"><span>Integração dos projetos</span><span class="status">Monitoramento</span></div>
+          <h3>Sistemas conectados</h3>
+          <p>Veja quais grupos estão se comunicando com a API, a última atividade e os indicadores de requisições.</p>
+          <a href="{{ url_for('monitor.pagina') }}#grupos">Acompanhar os grupos <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </section>
+
     <section class="intro" id="sobre" aria-labelledby="sobre-title">
       <div><p class="eyebrow">Uma experiência prática</p><h2 id="sobre-title">Projeto, código<br>e colaboração.</h2></div>
       <div class="intro-copy"><p>O Projeto Interclasse convida estudantes do 2º ano de Desenvolvimento de Sistemas a transformar necessidades reais de um campeonato escolar em produtos digitais.</p><p>Cada equipe escolhe uma modalidade e desenvolve uma solução para o dia a dia do torneio: placar, chaveamento, classificação, agenda ou estatísticas.</p></div>
