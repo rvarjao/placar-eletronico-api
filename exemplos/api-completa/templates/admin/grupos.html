@@ -25,7 +25,7 @@
 <h2>Grupos cadastrados</h2>
 <section class="painel">
   <table>
-    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Status</th><th>Token atual</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Habilitação</th><th>Visibilidade</th><th>Token atual</th><th>Ações</th></tr></thead>
     <tbody>
     {% for grupo in grupos %}
       <tr>
@@ -36,7 +36,8 @@
         </td>
         <td>{{ grupo.turma or "—" }}</td>
         <td>{% if grupo.integrantes %}<ul class="integrantes">{% for nome in grupo.integrantes %}<li>{{ nome }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
-        <td><span class="status {{ 'ok' if grupo.ativo else 'erro' }}">{{ "Ativo" if grupo.ativo else "Inativo" }}</span></td>
+        <td><span class="status {{ 'ok' if grupo.ativo else 'erro' }}">{{ "Habilitado" if grupo.ativo else "Desabilitado" }}</span></td>
+        <td><span class="status">{{ "Público" if grupo.publico else "Privado" }}</span></td>
         <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
           <div class="acoes">
@@ -53,7 +54,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="6">Nenhum grupo cadastrado.</td></tr>
+      <tr><td colspan="7">Nenhum grupo cadastrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>
