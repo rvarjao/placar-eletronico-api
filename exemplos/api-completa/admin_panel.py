@@ -200,7 +200,8 @@ def dados_do_formulario():
         if partes.scheme not in ("http", "https") or not partes.netloc:
             return None, None, "Informe uma URL válida (http:// ou https://)."
     return {"nome": nome, "turma": turma or None, "descricao": descricao or None,
-            "url": url or None}, integrantes, None
+            "url": url or None, "publico": int(request.form.get("publico") == "1"),
+            "ativo": int(request.form.get("ativo") == "1")}, integrantes, None
 
 
 @admin_bp.post("/grupos")
@@ -244,7 +245,9 @@ def editar_grupo(grupo_id):
             flash("Grupo atualizado.", "ok")
             return redirect(url_for("admin.grupos"))
         flash(erro, "erro")
-        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url")}}
+        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url")},
+                 "publico": int(request.form.get("publico") == "1"),
+                 "ativo": int(request.form.get("ativo") == "1")}
     return render_template("admin/grupo_editar.html", grupo=grupo)
 
 
