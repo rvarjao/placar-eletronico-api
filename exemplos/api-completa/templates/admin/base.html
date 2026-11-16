@@ -64,8 +64,23 @@
     .acoes-grupo { gap:5px; align-items:center; }
     .acoes-grupo .icone { width:32px; height:32px; padding:0; border-radius:6px; }
     .acoes-grupo .icone svg { width:16px; height:16px; }
-    .acoes-grupo .habilitar { background:var(--verde); }
-    .acoes-grupo .icone:focus-visible { outline:2px solid var(--azul-escuro); outline-offset:2px; }
+    .acoes-grupo .icone { transition:filter .15s,box-shadow .15s,transform .15s; }
+    .acoes-grupo .icone:hover { filter:brightness(1.16); box-shadow:0 2px 6px #0f172a40; transform:translateY(-1px); }
+    .acoes-grupo .icone:active { transform:translateY(0); filter:brightness(.95); }
+    .acoes-grupo .icone:focus-visible,.switch-grupo:focus-visible { outline:2px solid var(--azul-escuro); outline-offset:3px; }
+    .form-habilitacao { margin:0; }
+    .switch-grupo { display:inline-flex; align-items:center; gap:8px; padding:4px; border:0; border-radius:6px; background:transparent; color:var(--texto); font:inherit; font-weight:600; white-space:nowrap; cursor:pointer; transition:background .15s; }
+    .switch-grupo:hover { background:#e8edf5; }
+    .switch-grupo:active { background:#dbe3ef; }
+    .switch-trilho { position:relative; display:inline-block; width:42px; height:24px; flex:none; border-radius:999px; background:#64748b; transition:background .15s,box-shadow .15s; }
+    .switch-pino { position:absolute; top:3px; left:3px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:white; color:#15803d; transition:transform .15s; }
+    .switch-pino svg { width:12px; height:12px; }
+    .switch-grupo[aria-checked="true"] .switch-trilho { background:var(--verde); }
+    .switch-grupo[aria-checked="true"] .switch-pino { transform:translateX(18px); }
+    .switch-grupo:hover .switch-trilho { box-shadow:0 0 0 3px #cbd5e1; }
+    .switch-texto { color:#475569; font-size:12px; }
+    .switch-grupo[aria-checked="true"] .switch-texto { color:#166534; }
+    @media(prefers-reduced-motion:reduce) { .acoes-grupo .icone,.switch-grupo,.switch-trilho,.switch-pino { transition:none; } .acoes-grupo .icone:hover { transform:none; } }
     .icone.salvar { background:var(--azul); }
     .icone.remover { background:var(--vermelho); }
     dialog.confirmar { border:0; border-radius:12px; padding:22px; max-width:400px; width:calc(100% - 32px); box-shadow:0 20px 50px #0f172a40; }
