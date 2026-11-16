@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from db_supabase import db, SupabaseError
+from cors_api import normalizar_origem
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -30,7 +31,7 @@ def autenticar_token(token):
                         filters={"token_hash": f"eq.{hash_token(token)}", "ativo": "eq.1"})
     if registro is None:
         return None
-    return db().one("grupos", columns="id,nome,turma",
+    return db().one("grupos", columns="id,nome,turma,origem_permitida,restringir_origem",
                     filters={"id": f"eq.{registro['grupo_id']}", "ativo": "eq.1"})
 
 
@@ -199,7 +200,17 @@ def dados_do_formulario():
         partes = urlparse(url)
         if partes.scheme not in ("http", "https") or not partes.netloc:
             return None, None, "Informe uma URL válida (http:// ou https://)."
+    origem = request.form.get("origem_permitida", "").strip()
+    restringir = int(request.form.get("restringir_origem") == "1")
+    if origem:
+        try:
+            origem = normalizar_origem(origem)
+        except ValueError as exc:
+            return None, None, str(exc)
+    if restringir and not origem:
+        return None, None, "Informe a origem permitida para habilitar a restrição."
     return {"nome": nome, "turma": turma or None, "descricao": descricao or None,
+            "origem_permitida": origem or None, "restringir_origem": restringir,
             "url": url or None, "publico": int(request.form.get("publico") == "1"),
             "ativo": int(request.form.get("ativo") == "1")}, integrantes, None
 
@@ -247,11 +258,11 @@ def editar_grupo(grupo_id):
                 current_app.logger.exception("Falha ao salvar grupo %s", grupo_id)
                 codigo = exc.codigo
                 if codigo in ("PGRST204", "42703"):
-                    erro = "O banco não reconheceu uma coluna do formulário. Verifique a migration de visibilidade (publico) e o cache de esquema do Supabase."
+                    erro = "O banco não reconheceu uma coluna do formulário. Verifique a migrations de visibilidade e origem e o cache de esquema do Supabase."
                 elif codigo == "23505":
                     erro = "Já existe um registro com um dos valores informados. Verifique os dados do grupo."
                 elif codigo in ("22P02", "42804"):
-                    erro = "O tipo de um campo não é compatível com o banco. Verifique os tipos das colunas ativo e publico."
+                    erro = "O tipo de um campo não é compatível com o banco. Verifique os tipos das colunas ativo, publico e restringir_origem."
                 elif codigo == "23514":
                     erro = "Um valor não atende às restrições do banco. Verifique os campos informados."
                 else:
@@ -266,7 +277,8 @@ def editar_grupo(grupo_id):
                     return redirect(url_for("admin.grupos"))
                 erro = "Grupo não encontrado ou alteração não aplicada."
         flash(erro, "erro")
-        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url")},
+        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url", "origem_permitida")},
+                 "restringir_origem": int(request.form.get("restringir_origem") == "1"),
                  "publico": int(request.form.get("publico") == "1"),
                  "ativo": int(request.form.get("ativo") == "1")}
     return render_template("admin/grupo_editar.html", grupo=grupo)
