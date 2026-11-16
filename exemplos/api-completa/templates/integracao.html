@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Guia de integração com a API centralizada do Interclasse 2026">
+  <title>Integração com a API | Interclasse 2026 · Colégio Sinerge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="integration-page">
+  {% include 'partials/site_header.html' %}
+  <main id="inicio">
+    <section class="monitor-hero">
+      <p class="eyebrow">Colégio Sinerge · Guia para desenvolvedores</p>
+      <h1>Conecte seu projeto <em>à API.</em></h1>
+      <p class="lead">Integre o sistema da sua equipe ao Interclasse 2026 com a ajuda da inteligência artificial. Aproveite o código que você já desenvolveu e acompanhe os resultados no monitor público.</p>
+      <a class="button primary" href="#prompt">Ir para o prompt <span aria-hidden="true">↓</span></a>
+    </section>
+    <div class="integration-content">
+      <section class="guide-section" aria-labelledby="passos-title">
+        <p class="eyebrow">Comece aqui</p><h2 id="passos-title">Quatro passos para integrar.</h2>
+        <ol class="guide-steps">
+          <li><b>01</b><h3>Abra seu projeto</h3><p>Use seu editor com IA ou compartilhe os arquivos relevantes com seu assistente. Não envie arquivos .env nem segredos.</p></li>
+          <li><b>02</b><h3>Copie o prompt</h3><p>Envie o texto abaixo com o código existente. Peça que a IA analise e adapte o projeto, sem refazê-lo.</p></li>
+          <li><b>03</b><h3>Configure o token</h3><p>Use o token individual fornecido pelo professor na configuração protegida do servidor.</p></li>
+          <li><b>04</b><h3>Teste a integração</h3><p>Crie uma partida, salve o ID, atualize o placar e confira o resultado no monitor.</p></li>
+        </ol>
+      </section>
+      <section class="guide-section" id="prompt" aria-labelledby="prompt-title">
+        <p class="eyebrow">Inteligência artificial</p><h2 id="prompt-title">Prompt de integração.</h2>
+        <p>Copie o prompt completo para o ChatGPT, Gemini, Claude ou o assistente de programação do seu editor. A IA precisa ter acesso ao código do seu projeto.</p>
+        <div class="guide-panel">
+          <div class="guide-toolbar"><h3>Instruções para a IA</h3><button class="button primary copy-button" type="button" data-copy="prompt-text">Copiar prompt</button></div>
+          <textarea id="prompt-text" class="prompt-text" readonly aria-label="Prompt de integração completo" rows="19"># Integração com a API Centralizada — Interclasse 2026
+
+Estou desenvolvendo um projeto escolar do 2º ano de Desenvolvimento de Sistemas do Colégio Sinerge. Meu sistema já existe e preciso integrá-lo à API centralizada do Interclasse.
+
+## Objetivo
+Analise o código que disponibilizei, identifique a arquitetura e proponha um plano breve. Depois implemente a integração no projeto existente, preservando identidade visual, funcionalidades e regras da modalidade. Não recrie o sistema nem altere a API centralizada.
+
+## Contrato da API publicada
+URL base: https://rvarjao.pythonanywhere.com/api
+Use Authorization: Bearer TOKEN_DO_GRUPO e Content-Type: application/json nas requisições com corpo. O professor fornece o token individual; nunca peça que eu cole o token real na conversa, nem publique esse segredo no GitHub.
+
+Endpoints (relativos à URL base):
+- GET /placares: lista os placares cadastrados (200).
+- POST /placares/criar: cria um placar (201). Corpo: {"nome_equipe_a":"Equipe A","nome_equipe_b":"Equipe B","modalidade":"volei"}.
+- GET /placares/{id}: consulta um placar (200).
+- PATCH /placares/{id}: atualiza campos específicos (200). Exemplo: {"pontos_a":21,"pontos_b":18,"status":"em_andamento","tempo_partida":600}.
+
+A criação retorna um objeto com id, nome_equipe_a, nome_equipe_b, modalidade, status, pontos_a, pontos_b e tempo_partida. Os valores iniciais são status "aguardando", pontos 0 e tempo 0. Os únicos campos aceitos pelo PATCH são pontos_a, pontos_b, status e tempo_partida. Pontos e tempo são inteiros não negativos; tempo em segundos. Status aceitos: aguardando, em_andamento, encerrado. Faça o mapeamento dos nomes e estados do meu sistema para esse contrato, sem inventar campos ou rotas.
+
+Código de referência: https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa
+Monitor público: https://rvarjao.pythonanywhere.com/monitor
+
+## Implementação
+1. Centralize URL, configuração e cliente HTTP reutilizável. Use variável de ambiente ou configuração protegida do servidor para o token. Não exponha o token no JavaScript público, bundle, HTML, localStorage ou repositório. Se o projeto for somente frontend (GitHub Pages, por exemplo), explique que não é possível esconder um token no navegador e implemente ou proponha um intermediário servidor mínimo e autenticado (por exemplo, função serverless ou Supabase Edge Function), com o token em segredo do servidor. Restrinja o intermediário às operações do grupo e aos IDs de suas partidas; não crie um proxy aberto. Nunca use a service role do Supabase no navegador. Verifique CORS entre frontend e intermediário; não tente contornar a proteção do navegador. O backend existente pode fazer chamadas diretamente à API.
+2. Associe cada partida local ao ID retornado pela criação. Persista esse ID junto à partida. Verifique se já existe antes de criar, impeça cliques simultâneos e não crie outro placar ao recarregar a página. Se o POST falhar de modo ambíguo, não repita automaticamente: verifique o resultado antes de tentar de novo.
+3. Sincronize alterações relevantes ao iniciar a partida, mudar pontos, atualizar tempo e encerrar. Envie apenas os campos válidos e alterados, com controle de frequência para o relógio; não envie uma requisição a cada segundo. Evite concorrência e respostas fora de ordem. Dados específicos da modalidade (sets, faltas, jogadores, cartões) continuam no sistema existente.
+4. Consulte o mesmo ID para recuperar o estado. Se houver telão ou necessidade de atualização periódica, faça polling inicialmente a cada 15 segundos, evitando chamadas sobrepostas e interrompendo ao fechar a tela. Não escreva repetidamente dados que não mudaram.
+5. Trate HTTP 400, 401, 404, 503, outros erros HTTP e falhas de rede. Mostre mensagens úteis e só indique sincronização bem-sucedida após confirmação. Preserve o estado local quando possível e permita nova tentativa segura.
+6. Adicione indicador de conexão, sincronização, erro e última sincronização bem-sucedida, se compatível com a interface existente.
+7. Utilize apenas o token do meu grupo e os IDs das minhas partidas. A listagem é compartilhada; não altere nem exclua placares de outros grupos. Não utilize credenciais administrativas.
+
+## Testes
+- Configure o token fora do código público.
+- Crie uma partida de teste identificada com o nome do grupo.
+- Confirme o HTTP 201 e armazene o ID.
+- Consulte esse ID, inicie a partida, altere a pontuação e encerre.
+- Recarregue a aplicação e confirme que o mesmo ID é mantido.
+- Confira a partida e a atividade no monitor público, se o grupo estiver público.
+- Teste token inválido e falha de conexão sem alterar placares alheios.
+
+## Entrega
+Explique o plano, implemente as mudanças nos arquivos existentes e apresente os arquivos modificados, configuração segura do token, como executar e testar, funcionalidades integradas e limitações restantes. Se não tiver acesso ao código, solicite os arquivos necessários antes de inventar uma implementação.
+</textarea>
+          <p class="guide-feedback" id="copy-feedback" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+      <section class="guide-section" id="documentacao" aria-labelledby="docs-title">
+        <p class="eyebrow">Referência técnica</p><h2 id="docs-title">Contrato da API publicada.</h2>
+        <div class="guide-panel">
+          <p>URL base: <code>https://rvarjao.pythonanywhere.com/api</code></p>
+          <p>Autenticação: <code>Authorization: Bearer TOKEN_DO_GRUPO</code>. Para enviar JSON, use <code>Content-Type: application/json</code>.</p>
+          <div class="guide-table" tabindex="0" role="region" aria-label="Endpoints da API"><table><thead><tr><th>Método</th><th>Rota relativa à URL base</th><th>Finalidade</th><th>Sucesso</th></tr></thead><tbody>
+            <tr><td>GET</td><td><code>/placares</code></td><td>Listar placares</td><td>200</td></tr>
+            <tr><td>POST</td><td><code>/placares/criar</code></td><td>Criar placar</td><td>201</td></tr>
+            <tr><td>GET</td><td><code>/placares/{id}</code></td><td>Consultar placar</td><td>200</td></tr>
+            <tr><td>PATCH</td><td><code>/placares/{id}</code></td><td>Alterar campos do placar</td><td>200</td></tr>
+          </tbody></table></div>
+          <h3>Criação (POST)</h3><pre><code>{
+  "nome_equipe_a": "Equipe A",
+  "nome_equipe_b": "Equipe B",
+  "modalidade": "volei"
+}</code></pre>
+          <p>Guarde o ID retornado. A API inicia pontos e tempo em zero e status em <code>aguardando</code>.</p>
+          <h3>Atualização (PATCH)</h3><pre><code>{
+  "pontos_a": 21,
+  "pontos_b": 18,
+  "status": "em_andamento",
+  "tempo_partida": 600
+}</code></pre>
+          <p>Envie apenas os campos alterados. Status: <code>aguardando</code>, <code>em_andamento</code>, <code>encerrado</code>. Pontos e tempo em segundos são inteiros não negativos. Sets, faltas e outras estatísticas permanecem no seu sistema.</p>
+          <p>Erros comuns: 400 (dados inválidos), 401 (token inválido), 404 (placar inexistente), 503 (dependência indisponível). Confira o <a href="https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa" target="_blank" rel="noopener noreferrer">código de referência da API publicada</a>.</p>
+        </div>
+      </section>
+      <section class="guide-section" id="exemplos-codigo" aria-labelledby="codigo-title">
+        <p class="eyebrow">Exemplos práticos</p><h2 id="codigo-title">Escolha sua tecnologia.</h2>
+        <div class="guide-notice"><strong>Projetos hospedados no GitHub Pages:</strong> um token no navegador não é secreto. Use um intermediário servidor autenticado e restrito ao grupo, com o token em segredo do servidor, por exemplo uma Supabase Edge Function. Os exemplos abaixo são de código executado no servidor, não no navegador.</div>
+        <div class="guide-panel">
+          <div class="guide-toolbar"><h3>JavaScript · Node.js</h3><button class="button primary copy-button" type="button" data-copy="js-code">Copiar código</button></div>
+          <pre><code id="js-code">// Node.js 18+ (servidor). Nunca coloque o token no frontend público.
+const base = 'https://rvarjao.pythonanywhere.com/api';
+const token = process.env.INTERCLASSE_TOKEN;
+if (!token) throw new Error('Configure INTERCLASSE_TOKEN no servidor');
+
+async function api(caminho, metodo = 'GET', dados) {
+  const resposta = await fetch(base + caminho, {
+    method: metodo,
+    headers: {
+      Authorization: 'Bearer ' + token,
+      ...(dados ? {'Content-Type': 'application/json'} : {})
+    },
+    ...(dados ? {body: JSON.stringify(dados)} : {}),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!resposta.ok) throw new Error('API: HTTP ' + resposta.status);
+  return resposta.json();
+}
+
+// Execute a criação apenas uma vez por partida; persista o id retornado.
+async function criarPartida() {
+  const placar = await api('/placares/criar', 'POST', {
+    nome_equipe_a: 'Meu grupo — Equipe A',
+    nome_equipe_b: 'Meu grupo — Equipe B',
+    modalidade: 'volei'
+  });
+  return placar.id;
+}
+
+// Use o ID que o seu sistema já armazenou.
+async function atualizarPartida(id) {
+  await api('/placares/' + id, 'PATCH', {
+    pontos_a: 1, status: 'em_andamento'
+  });
+  return api('/placares/' + id);
+}</code></pre>
+        </div>
+        <div class="guide-panel">
+          <div class="guide-toolbar"><h3>Python · requests</h3><button class="button primary copy-button" type="button" data-copy="py-code">Copiar código</button></div>
+          <pre><code id="py-code"># Python (servidor). Instale requests: pip install requests
+import os
+import requests
+
+BASE = "https://rvarjao.pythonanywhere.com/api"
+TOKEN = os.environ["INTERCLASSE_TOKEN"]
+
+def api(caminho, metodo="GET", dados=None):
+    resposta = requests.request(
+        metodo, BASE + caminho,
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=dados, timeout=15,
+    )
+    resposta.raise_for_status()
+    return resposta.json()
+
+# Crie somente uma vez por partida e persista o ID no seu sistema.
+def criar_partida():
+    placar = api("/placares/criar", "POST", {
+        "nome_equipe_a": "Meu grupo — Equipe A",
+        "nome_equipe_b": "Meu grupo — Equipe B",
+        "modalidade": "volei",
+    })
+    return placar["id"]
+
+# Use o ID já armazenado da sua própria partida.
+def atualizar_partida(id_placar):
+    api(f"/placares/{id_placar}", "PATCH", {
+        "pontos_a": 1,
+        "status": "em_andamento",
+    })
+    return api(f"/placares/{id_placar}")</code></pre>
+        </div>
+        <p>Configure <code>INTERCLASSE_TOKEN</code> como variável de ambiente ou segredo do servidor. Os exemplos definem funções; adapte e chame-as nos eventos do seu projeto, armazenando o ID da criação. Não execute uma nova criação a cada atualização.</p>
+      </section>
+      <section class="guide-section" id="checklist" aria-labelledby="checklist-title">
+        <p class="eyebrow">Validação</p><h2 id="checklist-title">Teste antes de entregar.</h2>
+        <div class="guide-panel">
+          <div class="guide-toolbar"><h3>Checklist de integração</h3><span id="check-count" role="status">0 de 9</span></div>
+          <progress id="check-progress" max="9" value="0" aria-label="Progresso dos testes"></progress>
+          <div class="guide-checks">
+            {% for tarefa in tarefas %}<label><input type="checkbox" class="guide-check"> <span>{{ tarefa }}</span></label>{% endfor %}
+          </div>
+          <a class="button primary" href="{{ url_for('monitor.pagina') }}">Conferir no monitor público <span aria-hidden="true">→</span></a>
+          <p class="guide-small">O monitor só mostra grupos públicos e seus placares identificados. O checklist é local à página e não envia notas ao professor.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  {% include 'partials/site_footer.html' %}
+  <script src="{{ url_for('static', filename='integracao.js') }}" defer></script>
+</body>
+</html>
