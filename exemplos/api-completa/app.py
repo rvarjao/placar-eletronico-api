@@ -104,7 +104,7 @@ def situacao_projeto(url):
 
 def equipes_publicas():
     grupos = db().all("grupos", columns="id,nome,descricao,url,integrantes(id)",
-                      filters={"ativo": "eq.1"}, order="id.asc")
+                      filters={"publico": "eq.1"}, order="id.asc")
     equipes = []
     for posicao, grupo in enumerate(grupos, start=1):
         individual = len(grupo.get("integrantes") or []) == 1
