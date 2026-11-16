@@ -1,0 +1,15 @@
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('inicio') }}" aria-label="Projeto Interclasse 2026">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Colégio Sinerge">
+      <span></span>
+      <strong>Projeto<br>Interclasse</strong>
+    </a>
+    <nav aria-label="Navegação principal">
+      <a href="{{ url_for('inicio') }}#sobre">O projeto</a>
+      <a href="{{ url_for('inicio') }}#jornada">Jornada</a>
+      <a href="{{ url_for('inicio') }}#exemplos">Exemplos</a>
+      <a href="{{ url_for('inicio') }}#equipes">Equipes</a>
+      <a href="{{ url_for('monitor.pagina') }}"{% if request.endpoint == 'monitor.pagina' %} aria-current="page"{% endif %}>Monitor de placares</a>
+      <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
+    </nav>
+  </header>
