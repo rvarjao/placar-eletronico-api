@@ -36,7 +36,22 @@
         </td>
         <td>{{ grupo.turma or "—" }}</td>
         <td>{% if grupo.integrantes %}<ul class="integrantes">{% for nome in grupo.integrantes %}<li>{{ nome }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
-        <td><span class="status {{ 'ok' if grupo.ativo else 'erro' }}">{{ "Habilitado" if grupo.ativo else "Desabilitado" }}</span></td>
+        <td>
+          <form class="form-habilitacao" method="post" action="{{ url_for('admin.alternar_grupo', grupo_id=grupo.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="switch-grupo" type="submit" role="switch"
+                    aria-label="Acesso à API do grupo {{ grupo.nome }}"
+                    aria-checked="{{ 'true' if grupo.ativo else 'false' }}"
+                    title="{{ 'Desativar grupo' if grupo.ativo else 'Ativar grupo' }}">
+              <span class="switch-trilho" aria-hidden="true">
+                <span class="switch-pino">
+                  {% if grupo.ativo %}<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5 6 2.3 2.3 4.7-4.7"/></svg>{% endif %}
+                </span>
+              </span>
+              <span class="switch-texto" aria-hidden="true">{{ 'Habilitado' if grupo.ativo else 'Desabilitado' }}</span>
+            </button>
+          </form>
+        </td>
         <td><span class="status">{{ "Público" if grupo.publico else "Privado" }}</span></td>
         <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
@@ -45,10 +60,6 @@
             <form method="post" action="{{ url_for('admin.novo_token', grupo_id=grupo.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="icone secundario" type="submit" title="Gerar novo token" aria-label="Gerar novo token"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 9-9M17 6l3 3m-6 0 3 3"/></svg></button>
-            </form>
-            <form method="post" action="{{ url_for('admin.alternar_grupo', grupo_id=grupo.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="icone {{ 'perigo' if grupo.ativo else 'habilitar' }}" type="submit" title="{{ 'Desativar' if grupo.ativo else 'Ativar' }}" aria-label="{{ 'Desativar' if grupo.ativo else 'Ativar' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button>
             </form>
           </div>
         </td>
