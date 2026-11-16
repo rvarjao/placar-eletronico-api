@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, render_template
 from db_supabase import db
 
 monitor_bp = Blueprint("monitor", __name__)
-CAMPOS_PLACAR = "id,modalidade,nome_equipe_a,nome_equipe_b,status,pontos_a,pontos_b,tempo_partida"
+CAMPOS_PLACAR = "id,grupo_id,modalidade,nome_equipe_a,nome_equipe_b,status,pontos_a,pontos_b,tempo_partida"
 
 def instante(valor):
     return datetime.fromisoformat(valor.replace("Z", "+00:00")).astimezone(timezone.utc)
@@ -21,14 +21,11 @@ def montar_dados():
     logs = banco.all("requisicoes_api", columns="id,grupo_id,placar_id,metodo,status,criado_em", order="id.asc")
     nomes = {g["id"]: g["nome"] for g in grupos}
     habilitados = {g["id"] for g in grupos if g["ativo"] == 1}
-    ultimos, alteracoes, donos, atividade = {}, {}, {}, {}
+    ultimos, alteracoes, atividade = {}, {}, {}
     contagem, erros, metodos, criados = Counter(), Counter(), Counter(), Counter()
     total_hoje = erros_hoje = 0
     for r in logs:
         grupo, placar = r["grupo_id"], r["placar_id"]
-        # Descobrir o criador mesmo quando ele estiver privado ou desabilitado.
-        if placar is not None and r["metodo"] == "POST" and r["status"] == 201:
-            donos.setdefault(placar, grupo)
         if grupo not in nomes:
             continue
         t = instante(r["criado_em"])
@@ -50,9 +47,9 @@ def montar_dados():
     def recente(t):
         return t is not None and agora - t <= timedelta(minutes=5)
     # Negar por padrão: sem criador público identificado, não publicar a partida.
-    placares = [p for p in placares if donos.get(p["id"]) in nomes]
+    placares = [p for p in placares if p["grupo_id"] in nomes]
     for p in placares:
-        dono = donos.get(p["id"])
+        dono = p.pop("grupo_id")
         if dono is not None:
             criados[dono] += 1
         p.update(grupo=nomes.get(dono, "Não identificado"),
