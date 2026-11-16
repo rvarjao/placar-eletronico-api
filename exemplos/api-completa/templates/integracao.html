@@ -51,7 +51,7 @@ Endpoints (relativos à URL base):
 - GET /placares/{id}: consulta um placar (200).
 - PATCH /placares/{id}: atualiza campos específicos (200). Exemplo: {"pontos_a":21,"pontos_b":18,"status":"em_andamento","tempo_partida":600}.
 
-A criação retorna um objeto com id, nome_equipe_a, nome_equipe_b, modalidade, status, pontos_a, pontos_b e tempo_partida. Os valores iniciais são status "aguardando", pontos 0 e tempo 0. Os únicos campos aceitos pelo PATCH são pontos_a, pontos_b, status e tempo_partida. Pontos e tempo são inteiros não negativos; tempo em segundos. Status aceitos: aguardando, em_andamento, encerrado. Faça o mapeamento dos nomes e estados do meu sistema para esse contrato, sem inventar campos ou rotas.
+A criação retorna um objeto com id, grupo_id (atribuído automaticamente pelo servidor), nome_equipe_a, nome_equipe_b, modalidade, status, pontos_a, pontos_b e tempo_partida. Os valores iniciais são status "aguardando", pontos 0 e tempo 0. Os únicos campos aceitos pelo PATCH são pontos_a, pontos_b, status e tempo_partida. Pontos e tempo são inteiros não negativos; tempo em segundos. Status aceitos: aguardando, em_andamento, encerrado. Faça o mapeamento dos nomes e estados do meu sistema para esse contrato, sem inventar campos ou rotas.
 
 Código de referência: https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa
 Monitor público: https://rvarjao.pythonanywhere.com/monitor
@@ -61,9 +61,9 @@ Monitor público: https://rvarjao.pythonanywhere.com/monitor
 2. Associe cada partida local ao ID retornado pela criação. Persista esse ID junto à partida. Verifique se já existe antes de criar, impeça cliques simultâneos e não crie outro placar ao recarregar a página. Se o POST falhar de modo ambíguo, não repita automaticamente: verifique o resultado antes de tentar de novo.
 3. Sincronize alterações relevantes ao iniciar a partida, mudar pontos, atualizar tempo e encerrar. Envie apenas os campos válidos e alterados, com controle de frequência para o relógio; não envie uma requisição a cada segundo. Evite concorrência e respostas fora de ordem. Dados específicos da modalidade (sets, faltas, jogadores, cartões) continuam no sistema existente.
 4. Consulte o mesmo ID para recuperar o estado. Se houver telão ou necessidade de atualização periódica, faça polling inicialmente a cada 15 segundos, evitando chamadas sobrepostas e interrompendo ao fechar a tela. Não escreva repetidamente dados que não mudaram.
-5. Trate HTTP 400, 401, 404, 503, outros erros HTTP e falhas de rede. Mostre mensagens úteis e só indique sincronização bem-sucedida após confirmação. Preserve o estado local quando possível e permita nova tentativa segura.
+5. Trate HTTP 400, 401, 403, 404, 503, outros erros HTTP e falhas de rede. Mostre mensagens úteis e só indique sincronização bem-sucedida após confirmação. Preserve o estado local quando possível e permita nova tentativa segura.
 6. Adicione indicador de conexão, sincronização, erro e última sincronização bem-sucedida, se compatível com a interface existente.
-7. Utilize apenas o token do meu grupo e os IDs das minhas partidas. A listagem é compartilhada; não altere nem exclua placares de outros grupos. Não utilize credenciais administrativas.
+7. Utilize apenas o token do meu grupo e os IDs das minhas partidas. A listagem é compartilhada; somente o grupo proprietário pode alterar ou excluir seus placares. A API retorna HTTP 403 para uma tentativa de escrita em placar alheio. Não utilize credenciais administrativas.
 
 ## Testes
 - Configure o token fora do código público.
@@ -104,7 +104,7 @@ Explique o plano, implemente as mudanças nos arquivos existentes e apresente os
   "tempo_partida": 600
 }</code></pre>
           <p>Envie apenas os campos alterados. Status: <code>aguardando</code>, <code>em_andamento</code>, <code>encerrado</code>. Pontos e tempo em segundos são inteiros não negativos. Sets, faltas e outras estatísticas permanecem no seu sistema.</p>
-          <p>Erros comuns: 400 (dados inválidos), 401 (token inválido), 404 (placar inexistente), 503 (dependência indisponível). Confira o <a href="https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa" target="_blank" rel="noopener noreferrer">código de referência da API publicada</a>.</p>
+          <p>Erros comuns: 400 (dados inválidos), 401 (token inválido), 403 (operação não autorizada), 404 (placar inexistente), 503 (dependência indisponível). Confira o <a href="https://github.com/rvarjao/placar-eletronico-api/tree/main/exemplos/api-completa" target="_blank" rel="noopener noreferrer">código de referência da API publicada</a>.</p>
         </div>
       </section>
       <section class="guide-section" id="exemplos-codigo" aria-labelledby="codigo-title">
