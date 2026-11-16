@@ -10,6 +10,7 @@
       <a href="{{ url_for('inicio') }}#exemplos">Exemplos</a>
       <a href="{{ url_for('inicio') }}#equipes">Equipes</a>
       <a href="{{ url_for('monitor.pagina') }}"{% if request.endpoint == 'monitor.pagina' %} aria-current="page"{% endif %}>Monitor de placares</a>
+      <a href="{{ url_for('integracao') }}"{% if request.endpoint == 'integracao' %} aria-current="page"{% endif %}>Integração</a>
       <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
     </nav>
   </header>
