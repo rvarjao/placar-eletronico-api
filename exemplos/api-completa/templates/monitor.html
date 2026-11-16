@@ -1,14 +1,48 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Monitor de Placares | Interclasse 2026</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#172638;font:15px system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}header{background:#fff;border-bottom:1px solid #dce3eb;padding:16px 24px}header a{color:#174f85;text-decoration:none;font-weight:700}h1{font-size:clamp(26px,4vw,38px);margin:12px 0}h2{font-size:20px;margin-top:28px}p{color:#536478}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}.card,.panel{background:white;border:1px solid #dce3eb;border-radius:12px;padding:16px}.card strong{display:block;font-size:28px;margin-top:8px}.filters{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}label{display:grid;gap:4px;font-size:13px}select,button{padding:9px;border:1px solid #aab8c8;border-radius:6px;background:white;color:inherit;font:inherit}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}th,td{padding:12px;border-bottom:1px solid #e5eaf0}th{font-size:12px;text-transform:uppercase;color:#536478}td:last-child{white-space:normal}.score{font-weight:700;font-size:18px}.tag{display:inline-block;padding:4px 8px;border-radius:6px;background:#eef2f6}.live{background:#def4e5;color:#175b31}.error{color:#a42626}#status{font-size:13px}footer{margin:24px 0;color:#536478;font-size:13px}a{color:#174f85}
-</style></head><body><header><a href="/">← Projeto Interclasse 2026 · Colégio Sinerge</a></header>
-<main><h1>Monitor de placares</h1><p>Acompanhe as partidas e a integração dos sistemas dos alunos. Consulta pública, somente leitura.</p><p id="status" role="status">Carregando dados…</p>
-<section class="metrics" id="metricas" aria-label="Indicadores gerais"></section>
-<h2>Partidas</h2><div class="panel"><div class="filters"><label>Modalidade<select id="modalidade"><option value="">Todas</option></select></label><label>Status<select id="partida"><option value="">Todos</option><option value="aguardando">Aguardando</option><option value="em_andamento">Em andamento</option><option value="encerrado">Encerrado</option></select></label><label>Grupo<select id="grupo"><option value="">Todos</option></select></label></div>
-<div class="table-wrap"><table><thead><tr><th>ID</th><th>Modalidade</th><th>Equipes</th><th>Placar</th><th>Status</th><th>Tempo (s)</th><th>Grupo criador</th><th>Última comunicação</th><th>Última escrita</th></tr></thead><tbody id="placares"></tbody></table></div></div>
-<h2>Grupos e sistemas</h2><div class="panel"><p>Ativo: comunicação bem-sucedida nos últimos 5 minutos. Grupos sem placar também aparecem.</p><div class="table-wrap"><table><thead><tr><th>Grupo</th><th>Situação</th><th>Última comunicação</th><th>Placares</th><th>Requisições</th><th>Erros HTTP</th></tr></thead><tbody id="grupos"></tbody></table></div></div>
-<h2>Requisições por método</h2><div class="panel" id="metodos"></div><footer>Atualização automática a cada 15 segundos. A última escrita indica uma requisição de alteração bem-sucedida, não necessariamente mudança de pontuação. A consulta pública não gera atividade para os grupos.</footer></main>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Projeto Interclasse 2026 — Colégio Sinerge">
+  <title>Monitor de Placares | Interclasse 2026 · Colégio Sinerge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="monitor-page">
+  {% include 'partials/site_header.html' %}
+  <main id="inicio">
+    <section class="monitor-hero" aria-labelledby="monitor-title">
+      <p class="eyebrow">Colégio Sinerge · Interclasse 2026</p>
+      <h1 id="monitor-title">O Interclasse <em>em jogo.</em></h1>
+      <p class="lead">Monitor de placares e integração dos sistemas dos alunos. Acompanhamento público, sem login.</p>
+      <p id="status" role="status">Carregando dados…</p>
+    </section>
+    <div class="monitor-content">
+      <section class="metrics" id="metricas" aria-label="Indicadores gerais"></section>
+      <section class="monitor-section" aria-labelledby="partidas-title">
+        <p class="eyebrow">Resultados</p><h2 id="partidas-title">Partidas</h2>
+        <div class="panel"><div class="filters">
+          <label>Modalidade<select id="modalidade"><option value="">Todas</option></select></label>
+          <label>Status<select id="partida"><option value="">Todos</option><option value="aguardando">Aguardando</option><option value="em_andamento">Em andamento</option><option value="encerrado">Encerrado</option></select></label>
+          <label>Grupo<select id="grupo"><option value="">Todos</option></select></label>
+        </div>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Tabela de partidas"><table><thead><tr><th>ID</th><th>Modalidade</th><th>Equipes</th><th>Placar</th><th>Status</th><th>Tempo (s)</th><th>Grupo criador</th><th>Última comunicação</th><th>Última escrita</th></tr></thead><tbody id="placares"></tbody></table></div></div>
+      </section>
+      <section class="monitor-section" id="sistemas" aria-labelledby="sistemas-title">
+        <p class="eyebrow">Integração com a API</p><h2 id="sistemas-title">Grupos e sistemas</h2>
+        <div class="panel"><p>Ativo: comunicação bem-sucedida nos últimos 5 minutos. Grupos sem placar também aparecem.</p><div class="table-wrap" tabindex="0" role="region" aria-label="Tabela de grupos"><table><thead><tr><th>Grupo</th><th>Situação</th><th>Última comunicação</th><th>Placares</th><th>Requisições</th><th>Erros HTTP</th></tr></thead><tbody id="grupos"></tbody></table></div></div>
+      </section>
+      <section class="monitor-section" aria-labelledby="metodos-title">
+        <p class="eyebrow">Atividade da API</p><h2 id="metodos-title">Requisições por método</h2><div class="panel" id="metodos"></div>
+      </section>
+      <p class="monitor-note">Atualização automática a cada 15 segundos. A última escrita indica uma requisição de alteração bem-sucedida, não necessariamente mudança de pontuação. A consulta pública não gera atividade para os grupos.</p>
+    </div>
+  </main>
+  {% include 'partials/site_footer.html' %}
 <script>
 const $=id=>document.getElementById(id);let dados=null;
 const labels={aguardando:"Aguardando",em_andamento:"Em andamento",encerrado:"Encerrado"};
@@ -21,4 +55,6 @@ function partidas(){if(!dados)return;const tbody=$("placares");tbody.replaceChil
 function render(){const r=dados.resumo,m=$("metricas");m.replaceChildren();for(const [label,value] of [["Placares",r.placares],["Em andamento",r.andamento],["Encerrados",r.encerrados],["Sem comunicação recente",r.sem_comunicacao],["Grupos ativos",r.grupos_ativos+" / "+r.total_grupos],["Requisições hoje",r.requisicoes_hoje],["Erros hoje",r.erros_hoje]]){const c=el("div",label,"card");c.append(el("strong",value));m.append(c)}opcoes("modalidade",dados.placares.map(p=>p.modalidade));opcoes("grupo",[...dados.grupos.map(g=>g.nome),...dados.placares.map(p=>p.grupo)]);partidas();const g=$("grupos");g.replaceChildren();for(const x of dados.grupos)linha(g,[x.nome,el("span",x.situacao,"tag "+(x.situacao==="Ativo"?"live":"")),dataHora(x.ultima_comunicacao),x.placares,x.total_requisicoes,x.total_erros]);if(!dados.grupos.length)vazio(g,6,"Nenhum grupo ativo cadastrado.");const met=$("metodos");met.replaceChildren();for(const [k,v] of Object.entries(dados.metodos))met.append(el("p",k+": "+v));if(!Object.keys(dados.metodos).length)met.append(el("p","Nenhuma requisição registrada."))}
 async function atualizar(){try{const r=await fetch("/monitor/dados",{cache:"no-cache"});if(!r.ok)throw Error();dados=await r.json();render();$("status").className="";$("status").textContent="Dados atualizados em "+dataHora(dados.atualizado_em)}catch(e){$("status").className="error";$("status").textContent="Não foi possível atualizar. "+(dados?"Exibindo os últimos dados recebidos.":"Tentaremos novamente.")}finally{setTimeout(atualizar,15000)}}
 for(const id of ["modalidade","partida","grupo"])$(id).addEventListener("change",partidas);atualizar();
-</script></body></html>
+</script>
+</body>
+</html>
