@@ -13,6 +13,7 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from admin_panel import admin_bp, autenticar_token, registrar_requisicao
 from db_supabase import db, SupabaseError
 from monitor_publico import monitor_bp
+from cors_api import origem_requisicao, origem_cadastrada, preflight, validar_origem_grupo, aplicar_cors
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
@@ -72,6 +73,15 @@ def autenticar_requisicao():
     if not request.path.startswith("/api/"):
         return None
 
+    origem = origem_requisicao()
+    g.cors_origem = None
+    if request.method == "OPTIONS":
+        return preflight(origem) if request.headers.get("Access-Control-Request-Method") else ("", 204)
+    # Permite que uma origem cadastrada leia inclusive erros HTTP; a autorização
+    # efetiva continua vinculada ao token e à origem do respectivo grupo.
+    if origem_cadastrada(origem):
+        g.cors_origem = origem
+
     autorizacao = request.headers.get("Authorization", "")
     token = autorizacao.removeprefix("Bearer ").strip() if autorizacao.startswith("Bearer ") else ""
     grupo = autenticar_token(token)
@@ -79,10 +89,12 @@ def autenticar_requisicao():
     if grupo is not None:
         g.grupo_api_id = grupo["id"]
         g.grupo_api_nome = grupo["nome"]
+        if not validar_origem_grupo(grupo, origem):
+            return erro("Origem não autorizada para este grupo", 403)
         return None
 
     chave_legada = request.headers.get("X-API-Key", "")
-    if API_KEY and chave_legada and hmac.compare_digest(chave_legada, API_KEY):
+    if origem is None and API_KEY and chave_legada and hmac.compare_digest(chave_legada, API_KEY):
         return None
 
     return erro("Token do grupo ausente ou inválido", 401)
@@ -91,6 +103,9 @@ def autenticar_requisicao():
 @app.after_request
 def monitorar_requisicao(resposta):
     if request.path.startswith("/api/"):
+        aplicar_cors(resposta)
+        if request.method == "OPTIONS":
+            return resposta
         inicio = getattr(g, "inicio_requisicao", perf_counter())
         duracao_ms = max(0, round((perf_counter() - inicio) * 1000))
         try:
