@@ -16,10 +16,11 @@ def montar_dados():
     banco = db()
     agora = datetime.now(timezone.utc)
     hoje = agora.astimezone(ZoneInfo("America/Sao_Paulo")).date()
-    grupos = banco.all("grupos", columns="id,nome", filters={"ativo": "eq.1", "publico": "eq.1"}, order="id.asc")
+    grupos = banco.all("grupos", columns="id,nome,ativo", filters={"publico": "eq.1"}, order="id.asc")
     placares = banco.all("placares", columns=CAMPOS_PLACAR, order="id.desc")
     logs = banco.all("requisicoes_api", columns="id,grupo_id,placar_id,metodo,status,criado_em", order="id.asc")
     nomes = {g["id"]: g["nome"] for g in grupos}
+    habilitados = {g["id"] for g in grupos if g["ativo"] == 1}
     ultimos, alteracoes, donos, atividade = {}, {}, {}, {}
     contagem, erros, metodos, criados = Counter(), Counter(), Counter(), Counter()
     total_hoje = erros_hoje = 0
@@ -64,13 +65,14 @@ def montar_dados():
         t = ultimos.get(i)
         g.update(ultima_comunicacao=iso(t), total_requisicoes=contagem[i],
                  total_erros=erros[i], placares=criados[i],
-                 situacao="Ativo" if recente(t) else ("Sem comunicação recente" if t else "Sem comunicação bem-sucedida"))
+                 situacao=("Desabilitado" if i not in habilitados else
+                           "Ativo" if recente(t) else ("Sem comunicação recente" if t else "Sem comunicação bem-sucedida")))
     return {"placares": placares, "grupos": grupos, "metodos": dict(metodos),
             "resumo": {"placares": len(placares),
                        "andamento": sum(p["status"] == "em_andamento" for p in placares),
                        "encerrados": sum(p["status"] == "encerrado" for p in placares),
                        "sem_comunicacao": sum(p["status"] != "encerrado" and not recente(atividade.get(p["id"])) for p in placares),
-                       "grupos_ativos": sum(recente(t) for t in ultimos.values()),
+                       "grupos_ativos": sum(recente(t) for i, t in ultimos.items() if i in habilitados),
                        "total_grupos": len(grupos), "requisicoes_hoje": total_hoje,
                        "erros_hoje": erros_hoje},
             "atualizado_em": iso(agora)}
