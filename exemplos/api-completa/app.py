@@ -128,6 +128,22 @@ def inicio():
     return render_template("index.html", equipes=equipes)
 
 
+@app.get("/integracao")
+def integracao():
+    tarefas = [
+        "Configurar o token individual em local protegido",
+        "Criar uma partida de teste identificada com o grupo",
+        "Confirmar e armazenar o ID retornado pela API",
+        "Consultar o placar existente",
+        "Iniciar a partida",
+        "Alterar a pontuação",
+        "Encerrar a partida",
+        "Recarregar o sistema e conferir o mesmo ID no monitor público",
+        "Demonstrar tratamento de token inválido ou falha de conexão",
+    ]
+    return render_template("integracao.html", tarefas=tarefas)
+
+
 def instalar_dependencias():
     """Instala o requirements.txt no virtualenv do app quando ele mudou desde a última instalação."""
     if not REQUIREMENTS.exists():
