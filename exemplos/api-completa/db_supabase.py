@@ -4,7 +4,10 @@ import requests
 
 
 class SupabaseError(RuntimeError):
-    pass
+    def __init__(self, mensagem, *, codigo=None, http_status=None):
+        super().__init__(mensagem)
+        self.codigo = codigo
+        self.http_status = http_status
 
 
 class SupabaseDB:
@@ -56,8 +59,26 @@ class SupabaseDB:
                 params=params, json=data, headers=headers, timeout=12,
             )
             response.raise_for_status()
+        except requests.HTTPError as error:
+            resposta = error.response
+            codigo = None
+            mensagem = ""
+            if resposta is not None:
+                try:
+                    detalhe = resposta.json()
+                    if isinstance(detalhe, dict):
+                        codigo = detalhe.get("code")
+                        mensagem = str(detalhe.get("message") or "")[:500]
+                except ValueError:
+                    pass
+            status = resposta.status_code if resposta is not None else None
+            raise SupabaseError(
+                f"Falha no Supabase: {method} {resource}; HTTP {status}; "
+                f"código {codigo or 'desconhecido'}; {mensagem}",
+                codigo=codigo, http_status=status,
+            ) from error
         except requests.RequestException as error:
-            raise SupabaseError(f"Falha no Supabase ao acessar {resource}: {error}") from error
+            raise SupabaseError(f"Falha de comunicação com Supabase: {method} {resource}") from error
         return response.json() if response.content else None
 
     def select(self, table, *, columns="*", filters=None, order=None, limit=None):
