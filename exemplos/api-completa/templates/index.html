@@ -13,21 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="#inicio" aria-label="Projeto Interclasse 2026">
-      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Colégio Sinerge">
-      <span></span>
-      <strong>Projeto<br>Interclasse</strong>
-    </a>
-    <nav aria-label="Navegação principal">
-      <a href="#sobre">O projeto</a>
-      <a href="#jornada">Jornada</a>
-      <a href="#exemplos">Exemplos</a>
-      <a href="#equipes">Equipes</a>
-      <a href="{{ url_for('monitor.pagina') }}">Monitor de placares</a>
-      <a class="admin-link" href="{{ url_for('admin.login') }}">Área administrativa</a>
-    </nav>
-  </header>
+  {% include 'partials/site_header.html' %}
 
   <main id="inicio">
     <section class="hero" aria-labelledby="hero-title">
@@ -37,7 +23,6 @@
         <p class="lead">No Projeto Interclasse, as equipes criam sistemas para organizar partidas, registrar placares e aproximar a escola do esporte com tecnologia feita por estudantes.</p>
         <div class="hero-actions">
           <a class="button primary" href="#equipes">Conheça as equipes <span aria-hidden="true">↓</span></a>
-          <a class="button text" href="{{ url_for('monitor.pagina') }}">Acompanhar placares</a>
           <a class="button text" href="#sobre">Como funciona</a>
         </div>
       </div>
@@ -49,26 +34,14 @@
       </div>
     </section>
 
-    <section class="teams" id="monitor" aria-labelledby="monitor-title">
+    <section class="teams monitor-promo" id="monitor" aria-labelledby="monitor-title">
       <div class="section-heading">
         <p class="eyebrow">Acompanhamento em tempo real</p>
         <h2 id="monitor-title">O Interclasse em jogo.</h2>
-        <p class="section-note">Acompanhe os placares registrados na API centralizada e a integração dos sistemas desenvolvidos pelas equipes.</p>
+        <p class="section-note">Confira os placares, as modalidades e o andamento das partidas. Acompanhe também a comunicação dos sistemas dos alunos com a API centralizada, com indicadores e atualização automática.</p>
       </div>
-      <div class="team-grid">
-        <article class="team-card live">
-          <div class="team-top"><span>Monitor público</span><span class="status">Sem login</span></div>
-          <h3>Placares e partidas</h3>
-          <p>Confira as pontuações, as modalidades e o andamento das partidas, com atualização automática dos dados.</p>
-          <a href="{{ url_for('monitor.pagina') }}">Acessar monitor de placares <span aria-hidden="true">→</span></a>
-        </article>
-        <article class="team-card live">
-          <div class="team-top"><span>Integração dos projetos</span><span class="status">Monitoramento</span></div>
-          <h3>Sistemas conectados</h3>
-          <p>Veja quais grupos estão se comunicando com a API, a última atividade e os indicadores de requisições.</p>
-          <a href="{{ url_for('monitor.pagina') }}#grupos">Acompanhar os grupos <span aria-hidden="true">→</span></a>
-        </article>
-      </div>
+      <a class="button primary" href="{{ url_for('monitor.pagina') }}">Acessar monitor de placares <span aria-hidden="true">→</span></a>
+      <p class="monitor-promo-note">Acesso público · Sem login</p>
     </section>
 
     <section class="intro" id="sobre" aria-labelledby="sobre-title">
@@ -138,6 +111,6 @@
       </div>
     </section>
   </main>
-  <footer><a href="https://colegiosinerge.com.br/" target="_blank" rel="noopener"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Colégio Sinerge"></a><p>Projeto Interclasse 2026 · Desenvolvimento de Sistemas</p><a href="#inicio">Voltar ao topo ↑</a></footer>
+  {% include 'partials/site_footer.html' %}
 </body>
 </html>
