@@ -12,10 +12,12 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from admin_panel import admin_bp, autenticar_token, registrar_requisicao
 from db_supabase import db, SupabaseError
+from monitor_publico import monitor_bp
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
 app.register_blueprint(admin_bp)
+app.register_blueprint(monitor_bp)
 API_KEY = os.getenv("API_KEY", "")  # Compatibilidade opcional, desabilitada por padrão
 DEPLOY_TOKEN = os.getenv("DEPLOY_TOKEN", "")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
