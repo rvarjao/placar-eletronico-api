@@ -34,6 +34,7 @@
           <strong>{{ grupo.nome }}</strong>
           {% if grupo.descricao %}<div class="detalhe">{{ grupo.descricao }}</div>{% endif %}
           {% if grupo.url %}<div class="detalhe"><a href="{{ grupo.url }}" target="_blank" rel="noopener noreferrer">{{ grupo.url }}</a></div>{% endif %}
+          {% if grupo.url_repositorio %}<div class="detalhe"><a href="{{ grupo.url_repositorio }}" target="_blank" rel="noopener noreferrer">Ver repositório</a></div>{% endif %}
         </td>
         <td>{{ grupo.turma or "—" }}</td>
         <td>{% if grupo.integrantes %}<ul class="integrantes">{% for nome in grupo.integrantes %}<li>{{ nome }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>

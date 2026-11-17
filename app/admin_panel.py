@@ -196,11 +196,11 @@ def texto_csv(valor):
 @admin_bp.get("/grupos/exportar")
 @admin_autenticado
 def exportar_grupos():
-    grupos = db().all("grupos", columns="id,nome,turma,url,integrantes(id,nome)",
+    grupos = db().all("grupos", columns="*,integrantes(id,nome)",
                       order="turma.asc,nome.asc,id.asc")
     arquivo = io.StringIO(newline="")
     writer = csv.writer(arquivo, delimiter=";")
-    writer.writerow(["Turma", "Grupo", "Estudante", "Link do projeto", "Nota", "Observações"])
+    writer.writerow(["Turma", "Grupo", "Estudante", "Link do projeto", "Repositório", "Nota", "Observações"])
     for grupo in grupos:
         for nome in nomes_integrantes(grupo) or [""]:
             writer.writerow([
@@ -208,6 +208,7 @@ def exportar_grupos():
                 texto_csv(grupo["nome"]),
                 texto_csv(nome),
                 texto_csv(grupo["url"]),
+                texto_csv(grupo.get("url_repositorio")),
                 "",
                 "",
             ])
@@ -220,6 +221,21 @@ def exportar_grupos():
                     })
 
 
+def normalizar_url_grupo(valor, campo):
+    url = valor.strip()
+    if not url:
+        return None
+    if not re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url, re.IGNORECASE):
+        url = "https://" + url
+    try:
+        partes = urlparse(url)
+        if partes.scheme in ("http", "https") and partes.hostname:
+            return url
+    except ValueError:
+        pass
+    raise ValueError(f"Informe uma URL válida para o {campo} (http:// ou https://).")
+
+
 def dados_do_formulario():
     """Lê e valida os campos do grupo. Retorna (dados, integrantes, erro)."""
     nome = request.form.get("nome", "").strip()
@@ -230,13 +246,11 @@ def dados_do_formulario():
                    if linha.strip()]
     if not nome:
         return None, None, "Informe o nome do grupo."
-    if url:
-        # Sem esquema (ex.: "site.github.io") assume https; "javascript:" etc. é recusado.
-        if not re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url, re.IGNORECASE):
-            url = "https://" + url
-        partes = urlparse(url)
-        if partes.scheme not in ("http", "https") or not partes.netloc:
-            return None, None, "Informe uma URL válida (http:// ou https://)."
+    try:
+        url = normalizar_url_grupo(url, "projeto")
+        repositorio = normalizar_url_grupo(request.form.get("url_repositorio", ""), "repositório")
+    except ValueError as exc:
+        return None, None, str(exc)
     origem = request.form.get("origem_permitida", "").strip()
     restringir = int(request.form.get("restringir_origem") == "1")
     if origem:
@@ -246,10 +260,13 @@ def dados_do_formulario():
             return None, None, str(exc)
     if restringir and not origem:
         return None, None, "Informe a origem permitida para habilitar a restrição."
-    return {"nome": nome, "turma": turma or None, "descricao": descricao or None,
+    dados = {"nome": nome, "turma": turma or None, "descricao": descricao or None,
             "origem_permitida": origem or None, "restringir_origem": restringir,
-            "url": url or None, "publico": int(request.form.get("publico") == "1"),
-            "ativo": int(request.form.get("ativo") == "1")}, integrantes, None
+            "url": url, "publico": int(request.form.get("publico") == "1"),
+            "ativo": int(request.form.get("ativo") == "1")}
+    if repositorio:
+        dados["url_repositorio"] = repositorio
+    return dados, integrantes, None
 
 
 @admin_bp.post("/grupos")
@@ -262,7 +279,13 @@ def criar_grupo():
         flash(erro, "erro")
         return redirect(url_for("admin.grupos"))
     token = secrets.token_urlsafe(32)
-    grupo = db().insert("grupos", {**dados, "criado_em": agora_iso()})
+    try:
+        grupo = db().insert("grupos", {**dados, "criado_em": agora_iso()})
+    except SupabaseError as exc:
+        if "url_repositorio" not in dados or exc.codigo not in ("PGRST204", "42703"):
+            raise
+        flash("Aplique a migração do link do repositório no Supabase antes de cadastrar esse link.", "erro")
+        return redirect(url_for("admin.grupos"))
     salvar_integrantes(grupo["id"], integrantes)
     db().insert("tokens_api", {"grupo_id": grupo["id"], "token_hash": hash_token(token),
                               "prefixo": token[:8], "criado_em": agora_iso()})
@@ -289,13 +312,15 @@ def editar_grupo(grupo_id):
         # Integrantes são editados na tabela própria da página, não neste formulário.
         dados, _, erro = dados_do_formulario()
         if not erro:
+            if "url_repositorio" in grupo and "url_repositorio" in request.form:
+                dados.setdefault("url_repositorio", None)
             try:
                 alterados = db().update("grupos", dados, {"id": f"eq.{grupo_id}"})
             except SupabaseError as exc:
                 current_app.logger.exception("Falha ao salvar grupo %s", grupo_id)
                 codigo = exc.codigo
                 if codigo in ("PGRST204", "42703"):
-                    erro = "O banco não reconheceu uma coluna do formulário. Verifique a migrations de visibilidade e origem e o cache de esquema do Supabase."
+                    erro = "O banco não reconheceu uma coluna do formulário. Verifique as migrações e o cache de esquema do Supabase."
                 elif codigo == "23505":
                     erro = "Já existe um registro com um dos valores informados. Verifique os dados do grupo."
                 elif codigo in ("22P02", "42804"):
@@ -314,7 +339,7 @@ def editar_grupo(grupo_id):
                     return redirect(url_for("admin.grupos"))
                 erro = "Grupo não encontrado ou alteração não aplicada."
         flash(erro, "erro")
-        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url", "origem_permitida")},
+        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url", "url_repositorio", "origem_permitida")},
                  "restringir_origem": int(request.form.get("restringir_origem") == "1"),
                  "publico": int(request.form.get("publico") == "1"),
                  "ativo": int(request.form.get("ativo") == "1")}

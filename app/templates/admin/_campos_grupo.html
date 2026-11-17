@@ -11,6 +11,9 @@
 <label class="largo">URL do projeto
   <input type="url" name="url" value="{{ (grupo.url or '') if grupo else '' }}" placeholder="https://usuario.github.io/projeto">
 </label>
+<label class="largo">URL do repositório
+  <input type="url" name="url_repositorio" value="{{ (grupo.url_repositorio or '') if grupo else '' }}" placeholder="https://github.com/usuario/projeto">
+</label>
 <label>Visibilidade pública
   <select name="publico">
     <option value="0" {{ 'selected' if not grupo or not grupo.publico else '' }}>Privado — não aparece nas páginas públicas</option>
