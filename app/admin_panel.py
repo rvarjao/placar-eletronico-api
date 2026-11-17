@@ -1,5 +1,7 @@
+import csv
 import hashlib
 import hmac
+import io
 import os
 import re
 import secrets
@@ -8,7 +10,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, session, url_for
 from .db_supabase import db, SupabaseError
 from .cors_api import normalizar_origem
 
@@ -181,6 +183,41 @@ def dashboard():
 @admin_autenticado
 def grupos():
     return render_template("admin/grupos.html", grupos=listar_grupos(), novo_token=None)
+
+
+def texto_csv(valor):
+    texto = valor or ""
+    # Evita que a planilha interprete dados cadastrados como fórmulas.
+    if texto.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + texto
+    return texto
+
+
+@admin_bp.get("/grupos/exportar")
+@admin_autenticado
+def exportar_grupos():
+    grupos = db().all("grupos", columns="id,nome,turma,url,integrantes(id,nome)",
+                      order="turma.asc,nome.asc,id.asc")
+    arquivo = io.StringIO(newline="")
+    writer = csv.writer(arquivo, delimiter=";")
+    writer.writerow(["Turma", "Grupo", "Estudante", "Link do projeto", "Nota", "Observações"])
+    for grupo in grupos:
+        for nome in nomes_integrantes(grupo) or [""]:
+            writer.writerow([
+                texto_csv(grupo["turma"]),
+                texto_csv(grupo["nome"]),
+                texto_csv(nome),
+                texto_csv(grupo["url"]),
+                "",
+                "",
+            ])
+
+    return Response(arquivo.getvalue().encode("utf-8-sig"),
+                    content_type="text/csv; charset=utf-8",
+                    headers={
+                        "Content-Disposition": 'attachment; filename="interclasse-grupos-estudantes.csv"',
+                        "Cache-Control": "no-store",
+                    })
 
 
 def dados_do_formulario():
