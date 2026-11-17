@@ -7,9 +7,10 @@ import json
 import sqlite3
 from pathlib import Path
 
-from db_supabase import db
+from app.db_supabase import db
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1] / "exemplos"
+LEGADO = ROOT / "api-completa"
 
 
 def importar_registros(tabela, registros):
@@ -24,7 +25,7 @@ def importar_registros(tabela, registros):
 
 
 def importar_sqlite():
-    caminho = Path(__file__).with_name("monitoramento.db")
+    caminho = LEGADO / "monitoramento.db"
     if not caminho.exists():
         print("SQLite: nenhum arquivo encontrado")
         return
@@ -50,7 +51,7 @@ def importar_json(caminho, chave=None):
 
 
 def main():
-    importar_json(Path(__file__).with_name("placares.json"))
+    importar_json(LEGADO / "placares.json")
     importar_sqlite()
     importar_json(ROOT / "campeonato" / "campeonato.json", "campeonato_estado")
     importar_json(ROOT / "campeonato" / "conexao_api.json", "campeonato_conexao")

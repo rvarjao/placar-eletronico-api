@@ -1,6 +1,6 @@
 # Exemplos
 
-- [api-completa](api-completa/README.md): API publicada, painel administrativo, grupos, tokens e monitoramento.
+- [API publicada](../docs/api-publicada.md): implementação principal em `app/`, painel administrativo, grupos, tokens e monitoramento.
 - [placar-eletronico](placar-eletronico/README.md): telas de operador e de telão que usam a API publicada com o token de um grupo.
 - [campeonato](campeonato/README.md): gerenciador que cria e acompanha placares pela API publicada com o token de um grupo (ou pelo placar local).
 

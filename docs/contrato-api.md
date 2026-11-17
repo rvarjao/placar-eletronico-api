@@ -1,68 +1,29 @@
-# Contrato da API — versão 1
+# Contrato da API publicada
 
-URL base de exemplo: `http://192.168.1.100:5001/api`. Chaves JSON em snake_case.
+Base: `/api/placares`. Todas as operações exigem `Authorization: Bearer TOKEN_DO_GRUPO`. Opcionalmente, o servidor aceita `X-API-Key` quando `API_KEY` está configurada.
 
-## Campos
+## Placar
 
-| Campo | Tipo | Regra |
-|---|---|---|
-| id | inteiro | gerado no POST e retornado nas consultas |
-| nome_equipe_a, nome_equipe_b | texto | obrigatórios |
-| modalidade | texto validado | futebol, futsal, basquete, volei, handebol, outro |
-| status | texto validado | nao_iniciado, em_andamento, pausado, finalizado |
-| tempo | inteiro | segundos >= 0; crescente ou regressivo conforme esporte |
-| etapa | texto | ex.: 1º tempo, 3º quarto, 4º set |
-| pontos_equipe_a, pontos_equipe_b | inteiro | >= 0 |
-| faltas_equipe_a, faltas_equipe_b | inteiro | >= 0 |
-| detalhes | objeto JSON | informações opcionais específicas do esporte |
+Cada placar contém `id`, `nome_equipe_a`, `nome_equipe_b`, `modalidade`, `status`, `pontos_a`, `pontos_b` e `tempo_partida`. `id` é gerado pelo Supabase. Os pontos e o tempo são inteiros não negativos; o tempo é medido em segundos. Status válidos: `aguardando`, `em_andamento`, `encerrado`.
 
-## POST /placares
+## Operações
 
-Entrada mínima (valores padrão para status, tempo, pontos e faltas devem ser implementados):
+| Método e caminho | Comportamento |
+| --- | --- |
+| `GET /api/placares` | Lista os placares; 200. |
+| `GET /api/placares/{id}` | Consulta um placar; 200 ou 404. |
+| `POST /api/placares/criar` | Cria com `nome_equipe_a`, `nome_equipe_b` e `modalidade` não vazios; define status `aguardando` e números zero; 201 com `Location`. |
+| `PUT /api/placares/{id}` | Substitui os campos do placar; exige os três textos, status, pontos e tempo; 200 ou 404. |
+| `PATCH /api/placares/{id}` | Altera somente `pontos_a`, `pontos_b`, `status` e/ou `tempo_partida`; 200 ou 404. |
+| `DELETE /api/placares/{id}` | Exclui o placar; 204 ou 404. |
 
-```json
-{"nome_equipe_a":"Brasil","nome_equipe_b":"Argentina","modalidade":"futebol","etapa":"1º tempo"}
+Dados inválidos retornam 400; token ausente ou inválido retorna 401; falha de persistência no Supabase retorna 503. Os exemplos de Campeonato e Placar Eletrônico armazenam informações auxiliares, como etapa e faltas, em `estado_aplicacoes` no Supabase.
+
+Cada placar criado recebe o `grupo_id` do token autenticado. Apenas esse grupo pode alterar ou excluir o placar; outro grupo recebe 403. Para chamadas do navegador, a origem deve corresponder à origem cadastrada para o grupo. O preflight CORS aceita apenas origens cadastradas e métodos/cabeçalhos da API.
+
+```bash
+curl -X POST https://rvarjao.pythonanywhere.com/api/placares/criar \
+  -H 'Authorization: Bearer TOKEN_DO_GRUPO' \
+  -H 'Content-Type: application/json' \
+  -d '{"nome_equipe_a":"Brasil","nome_equipe_b":"Argentina","modalidade":"futsal"}'
 ```
-
-Resposta esperada: **201 Created**:
-
-```json
-{"id":15,"nome_equipe_a":"Brasil","nome_equipe_b":"Argentina","modalidade":"futebol","status":"nao_iniciado","tempo":0,"etapa":"1º tempo","pontos_equipe_a":0,"pontos_equipe_b":0,"faltas_equipe_a":0,"faltas_equipe_b":0,"detalhes":{}}
-```
-
-## GET /placares/{id}
-
-Resposta esperada: **200 OK**:
-
-```json
-{"id":15,"nome_equipe_a":"Brasil","nome_equipe_b":"Argentina","modalidade":"futebol","status":"em_andamento","tempo":2520,"etapa":"2º tempo","pontos_equipe_a":2,"pontos_equipe_b":1,"faltas_equipe_a":3,"faltas_equipe_b":5,"detalhes":{}}
-```
-
-Se não existir, responder **404 Not Found**, por exemplo `{"erro":"placar_nao_encontrado"}`.
-
-## PATCH /placares/{id}
-
-Usada pelo operador do placar (com autorização). Enviar apenas campos alterados:
-
-```json
-{"pontos_equipe_a":3,"tempo":2700,"etapa":"2º tempo"}
-```
-
-Resposta esperada: **200 OK**, com objeto atualizado. Não permitir alteração do ID.
-
-## Exemplo específico: vôlei
-
-```json
-{"id":20,"nome_equipe_a":"Brasil","nome_equipe_b":"Argentina","modalidade":"volei","status":"em_andamento","tempo":0,"etapa":"4º set","pontos_equipe_a":24,"pontos_equipe_b":22,"faltas_equipe_a":0,"faltas_equipe_b":0,"detalhes":{"sets_equipe_a":2,"sets_equipe_b":1}}
-```
-
-No vôlei, os campos `pontos_equipe_*` representam pontos do set atual; os sets vencidos estão em `detalhes`.
-
-## Erros
-
-- 201: criado; 200: consulta/atualização.
-- 400 ou 422: entrada inválida; 404: não encontrado.
-- 401/403: atualização não autorizada.
-- 500: erro inesperado; 503: indisponibilidade de dependência.
-
-Cabe à turma implementar validações, persistência, tratamento de erros e autenticação. **O esqueleto retorna 501 intencionalmente.**

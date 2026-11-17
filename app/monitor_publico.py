@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, render_template
-from db_supabase import db
+from .db_supabase import db
 
 monitor_bp = Blueprint("monitor", __name__)
 CAMPOS_PLACAR = "id,grupo_id,modalidade,nome_equipe_a,nome_equipe_b,status,pontos_a,pontos_b,tempo_partida"

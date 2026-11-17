@@ -1,28 +1,20 @@
-# API de Placar Eletrônico — projeto-base
+# Placar Eletrônico — API publicada
 
-Projeto didático de integração entre **Gerenciamento de Campeonatos** (cliente) e **Placar Eletrônico** (API Flask). A execução será por Docker na rede local da escola, com persistência no PostgreSQL do Supabase.
+Aplicação Flask do Projeto Interclasse: API de placares, painel administrativo, landing page e integração com Supabase. A implementação de produção está em [`app/`](app/). As interfaces de Campeonato e Placar Eletrônico ficam em [`exemplos/`](exemplos/) e são montadas no mesmo servidor.
 
-**As três rotas estão declaradas, mas sem implementação (respondem HTTP 501).** O objetivo é que os alunos programem o comportamento.
+## Páginas e API
 
-## Documentação
-- [Guia da atividade](docs/guia-da-atividade.md)
-- [Contrato da API e exemplos JSON](docs/contrato-api.md)
-- [Integração via polling](docs/integracao.md)
-- [Exemplos de referência](exemplos/README.md): API completa, Placar Eletrônico (5001) e Gerenciador de Campeonato (5002)
+- `/`: landing page das equipes.
+- `/monitor`: monitor público; `/integracao`: guia de integração.
+- `/admin/login`: acesso administrativo; `/admin`: painel.
+- `/exemplos/campeonato/` e `/exemplos/placar-eletronico/`: interfaces demonstrativas.
+- `/api/placares`: API autenticada por token de grupo.
 
-## Estrutura
-- `app/routes/placares.py`: POST, GET e PATCH definidos, com TODOs.
-- `app/services/`: regras de negócio a implementar.
-- `app/repositories/`: acesso ao banco a implementar.
-- `app/models/`: modelagem a implementar.
-- `Dockerfile` e `compose.yaml`: execução local.
-- `.env.example`: exemplo sem credenciais.
-- `tests/`: testes a desenvolver.
+## Execução local
 
-## Início
-1. Faça um fork e trabalhe em branches.
-2. Copie `.env.example` para `.env` com credenciais válidas do Supabase; não publique segredos.
-3. Execute `docker compose up --build` e abra a porta 5001 da máquina da escola.
-4. Implemente as rotas conforme o contrato e teste com curl ou Postman.
+1. Execute [`app/supabase/schema.sql`](app/supabase/schema.sql) no SQL Editor do Supabase.
+2. Copie `.env.example` para `.env` e preencha as credenciais somente no servidor.
+3. Instale as dependências com `pip install -r requirements.txt`.
+4. Carregue o ambiente e execute `python run.py` (porta 5000), ou use `docker compose up --build` (porta 5001 no host).
 
-O servidor requer internet para o Supabase. O acesso entre computadores depende das configurações da rede local.
+Consulte [configuração, migração e endpoints](docs/api-publicada.md), [integração dos exemplos](exemplos/README.md) e [deploy no PythonAnywhere](docs/deploy-pythonanywhere.md).

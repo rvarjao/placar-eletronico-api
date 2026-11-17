@@ -1,12 +1,12 @@
 """Testes da API de propriedade, sem conexão com o Supabase.
-Executar em exemplos/api-completa: python -m unittest test_propriedade.py
+Executar na raiz: python -m unittest discover -s tests
 """
 import os
 import unittest
 from unittest.mock import patch, Mock
 
 os.environ["EXEMPLO_POLLING"] = "0"
-import app as modulo
+from app import server as modulo
 
 
 class PropriedadeTest(unittest.TestCase):

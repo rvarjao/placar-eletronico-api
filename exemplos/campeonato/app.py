@@ -9,8 +9,8 @@ from itertools import combinations
 from pathlib import Path
 
 # Armazenamento comum em Supabase, inclusive na execução isolada dos exemplos.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-completa"))
-from db_supabase import db
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from app.db_supabase import db
 from threading import Lock, Thread
 from urllib.parse import urlencode
 

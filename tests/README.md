@@ -1,3 +1,3 @@
-# Testes a desenvolver
+# Testes
 
-Criar testes de POST, GET e PATCH; validação; 404; indisponibilidade do banco; autenticação.
+Execute `python3 -m unittest discover -s tests -p 'test_*.py'`. Os testes de propriedade e CORS usam banco simulado, sem conexão com o Supabase.

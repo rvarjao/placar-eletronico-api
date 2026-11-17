@@ -10,10 +10,10 @@ from urllib.parse import urlparse
 from flask import Flask, g, jsonify, render_template, request
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
-from admin_panel import admin_bp, autenticar_token, registrar_requisicao
-from db_supabase import db, SupabaseError
-from monitor_publico import monitor_bp
-from cors_api import origem_requisicao, origem_cadastrada, preflight, validar_origem_grupo, aplicar_cors
+from .admin_panel import admin_bp, autenticar_token, registrar_requisicao
+from .db_supabase import db, SupabaseError
+from .monitor_publico import monitor_bp
+from .cors_api import origem_requisicao, origem_cadastrada, preflight, validar_origem_grupo, aplicar_cors
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
@@ -21,9 +21,9 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(monitor_bp)
 API_KEY = os.getenv("API_KEY", "")  # Compatibilidade opcional, desabilitada por padrão
 DEPLOY_TOKEN = os.getenv("DEPLOY_TOKEN", "")
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-REQUIREMENTS = Path(__file__).with_name("requirements.txt")
-REQUIREMENTS_STAMP = Path(__file__).with_name(".requirements.sha256")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
+REQUIREMENTS_STAMP = PROJECT_ROOT / ".requirements.sha256"
 CAMPOS = ("nome_equipe_a", "nome_equipe_b", "modalidade")
 STATUS = {"aguardando", "em_andamento", "encerrado"}
 
@@ -171,6 +171,11 @@ def integracao():
         "Demonstrar tratamento de token inválido ou falha de conexão",
     ]
     return render_template("integracao.html", tarefas=tarefas)
+@app.get("/healthz")
+def healthz():
+    """Confirma que o novo ponto de entrada Flask foi carregado."""
+    return jsonify({"app": "placar-eletronico", "estrutura": "app"})
+
 
 
 def instalar_dependencias():

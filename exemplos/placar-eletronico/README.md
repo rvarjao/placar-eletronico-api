@@ -1,6 +1,6 @@
 # Exemplo — Placar Eletrônico (porta 5001)
 
-Telas de operador e de telão para os placares da [API publicada](../api-completa/README.md). O sistema usa o token de um grupo para ler e gravar os placares na API; quem cria as partidas costuma ser o [Gerenciador de Campeonato](../campeonato/README.md).
+Telas de operador e de telão para os placares da [API publicada](../../docs/api-publicada.md). O sistema usa o token de um grupo para ler e gravar os placares na API; quem cria as partidas costuma ser o [Gerenciador de Campeonato](../campeonato/README.md).
 
 Os dados que a API não guarda (etapa, faltas, sets do vôlei e a pausa do cronômetro) ficam neste sistema, em `estado_local.json` (criado automaticamente).
 

@@ -1,8 +1,10 @@
-# Projeto interdisciplinar — Campeonato e Placar Eletrônico
+# Guia histórico da atividade — Campeonato e Placar Eletrônico
+
+Este roteiro descreve a atividade original para os grupos. A aplicação de referência deste repositório está implementada em `app/`; consulte o [contrato publicado](contrato-api.md).
 
 ## Objetivo
 
-Desenvolver dois sistemas independentes que se comunicam por uma API REST em HTTP/JSON. O projeto-base traz apenas arquivos, importações, caminhos de rotas e TODOs; **não há implementação de regras de negócio**.
+Desenvolver dois sistemas independentes que se comunicam por uma API REST em HTTP/JSON. Os grupos podem usar este roteiro para construir seus próprios sistemas.
 
 ## Arquitetura
 

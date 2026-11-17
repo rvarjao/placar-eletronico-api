@@ -9,8 +9,8 @@ from functools import wraps
 from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
-from db_supabase import db, SupabaseError
-from cors_api import normalizar_origem
+from .db_supabase import db, SupabaseError
+from .cors_api import normalizar_origem
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")

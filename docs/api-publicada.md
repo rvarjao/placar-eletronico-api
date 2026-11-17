@@ -4,7 +4,8 @@ A API Flask, o painel administrativo e os exemplos integrados (Campeonato e Plac
 
 ## 1. Criar tabelas
 
-No Supabase Dashboard → SQL Editor, execute [supabase/schema.sql](supabase/schema.sql).
+No Supabase Dashboard → SQL Editor, execute [supabase/schema.sql](../app/supabase/schema.sql).
+Para instalações existentes, aplique também as migrações de [`app/supabase/migrations`](../app/supabase/migrations) em ordem cronológica.
 
 Tabelas:
 - `placares`: placares e cronômetro;
@@ -42,9 +43,9 @@ Compatível também com `SUPABASE_SERVICE_ROLE_KEY` (chave JWT legada), caso ain
 Instale as dependências e execute:
 
 ```bash
-cd exemplos/api-completa
+cd placar-eletronico-api
 pip install -r requirements.txt
-python app.py
+python run.py
 ```
 
 ## 3. Migração dos dados existentes (ANTES de publicar)
@@ -52,8 +53,8 @@ python app.py
 No servidor que contém os dados antigos (`monitoramento.db`, `placares.json`, `campeonato.json`, `estado_local.json` e arquivos de conexão), depois de executar o esquema SQL e configurar as variáveis:
 
 ```bash
-cd exemplos/api-completa
-python migrar_dados_legados.py
+cd placar-eletronico-api
+python -m app.migrar_dados_legados
 ```
 
 Faça um **backup antes** e verifique os registros no Supabase. O importador lê os arquivos antigos apenas uma vez para transferir dados; ele **não apaga os arquivos**. Não ative a nova versão sem importar os dados do servidor atual, pois os tokens e placares anteriores não aparecerão no Supabase até a importação. Depois de conferir a integridade, os arquivos antigos podem ser arquivados fora da aplicação. Não execute essa rotina enquanto houver escritas no sistema antigo.
@@ -75,6 +76,6 @@ O registro da requisição inclui `grupo_id`, `metodo`, `rota`, `status`, `durac
 - `PATCH /api/placares/<id>`
 - `DELETE /api/placares/<id>`
 
-Use `Authorization: Bearer TOKEN_DO_GRUPO`. Opcionalmente, habilite `API_KEY` para clientes legados com `X-API-Key`. O Postman disponibiliza uma coleção didática em `postman_collection.json` (não utilizada para persistência).
+Use `Authorization: Bearer TOKEN_DO_GRUPO`. Opcionalmente, habilite `API_KEY` para clientes legados com `X-API-Key`. O Postman disponibiliza uma coleção didática em [coleção didática](postman_collection.json) (não utilizada para persistência).
 
 A interface de Campeonato e Placar Eletrônico continua em Flask; alterações de estado são enviadas ao Supabase. O deploy de produção depende da configuração e execução do SQL no projeto Supabase; a criação das tabelas não é automática ao inicializar o Flask.

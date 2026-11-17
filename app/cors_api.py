@@ -1,8 +1,9 @@
 """CORS explícito para a API; Origin é uma restrição adicional, não autenticação."""
 from urllib.parse import urlsplit
 
-from flask import request, g, jsonify
-from db_supabase import db
+from flask import current_app, request, g, jsonify
+from werkzeug.exceptions import MethodNotAllowed, NotFound
+from .db_supabase import db
 
 METODOS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"}
 HEADERS = {"authorization", "content-type"}
@@ -51,14 +52,18 @@ def preflight(origem):
     """OPTIONS não transporta Bearer. Autoriza origem global; chamada real valida grupo."""
     metodo = request.headers.get("Access-Control-Request-Method", "").upper()
     headers = {h.strip().lower() for h in request.headers.get("Access-Control-Request-Headers", "").split(",") if h.strip()}
-    if (not origem or metodo not in METODOS or not request.url_rule
-            or metodo not in request.url_rule.methods or not headers <= HEADERS
-            or not origem_cadastrada(origem)):
+    if not origem or metodo not in METODOS or not headers <= HEADERS or not origem_cadastrada(origem):
+        return jsonify(erro="Origem, método ou cabeçalhos não autorizados"), 403
+    try:
+        regra, _ = current_app.url_map.bind_to_environ(request.environ).match(
+            method=metodo, return_rule=True,
+        )
+    except (MethodNotAllowed, NotFound):
         return jsonify(erro="Origem, método ou cabeçalhos não autorizados"), 403
     g.cors_origem = origem
     from flask import make_response
     resposta = make_response("", 204)
-    resposta.headers["Access-Control-Allow-Methods"] = ", ".join(sorted(request.url_rule.methods & METODOS))
+    resposta.headers["Access-Control-Allow-Methods"] = ", ".join(sorted(regra.methods & METODOS))
     resposta.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
     resposta.headers["Access-Control-Max-Age"] = "300"
     resposta.vary.add("Access-Control-Request-Method")

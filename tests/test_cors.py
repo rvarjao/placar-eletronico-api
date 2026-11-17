@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 os.environ["EXEMPLO_POLLING"] = "0"
-import app as modulo
-import cors_api
+from app import server as modulo
+from app import cors_api
 
 
 class CorsTest(unittest.TestCase):

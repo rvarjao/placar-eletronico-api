@@ -8,8 +8,8 @@ from functools import wraps
 from pathlib import Path
 
 # Armazenamento comum em Supabase, inclusive na execução isolada dos exemplos.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-completa"))
-from db_supabase import db
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from app.db_supabase import db
 from threading import Lock
 from urllib.parse import urlencode
 
@@ -27,7 +27,7 @@ API_KEY = os.getenv("API_KEY", "chave-aula-123")  # Protege as telas de operador
 # configuração tem prioridade sobre eles.
 PLACAR_URL = os.getenv("PLACAR_URL", "").strip().rstrip("/")
 PLACAR_TOKEN = os.getenv("PLACAR_TOKEN", "").strip()
-URL_LOCAL_PADRAO = "http://127.0.0.1:5000"  # api-completa rodando na sua máquina
+URL_LOCAL_PADRAO = "http://127.0.0.1:5000"  # API principal rodando na sua máquina
 TIMEOUT = 5
 
 # Definidos pelo servidor principal quando este sistema roda dentro dele:
