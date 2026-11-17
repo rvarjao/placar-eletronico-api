@@ -25,18 +25,17 @@
 <h2>Grupos cadastrados</h2>
 <p><a class="botao" href="{{ url_for('admin.exportar_grupos') }}">Exportar grupos e estudantes (CSV)</a></p>
 <section class="painel">
-  <table>
-    <thead><tr><th>Grupo</th><th>Turma</th><th>Integrantes</th><th>Habilitação</th><th>Visibilidade</th><th>Origem / CORS</th><th>Token atual</th><th>Ações</th></tr></thead>
+  <table id="grupos-cadastrados">
+    <thead><tr><th>Grupo</th><th>Integrantes</th><th>Habilitação</th><th>Visibilidade</th><th>Origem / CORS</th><th>Ações</th></tr></thead>
     <tbody>
     {% for grupo in grupos %}
-      <tr>
+      <tr class="linha-grupo">
         <td class="quebra">
           <strong>{{ grupo.nome }}</strong>
           {% if grupo.descricao %}<div class="detalhe">{{ grupo.descricao }}</div>{% endif %}
           {% if grupo.url %}<div class="detalhe"><a href="{{ grupo.url }}" target="_blank" rel="noopener noreferrer">{{ grupo.url }}</a></div>{% endif %}
           {% if grupo.url_repositorio %}<div class="detalhe"><a href="{{ grupo.url_repositorio }}" target="_blank" rel="noopener noreferrer">Ver repositório</a></div>{% endif %}
         </td>
-        <td>{{ grupo.turma or "—" }}</td>
         <td>{% if grupo.integrantes %}<ul class="integrantes">{% for nome in grupo.integrantes %}<li>{{ nome }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
         <td>
           <form class="form-habilitacao" method="post" action="{{ url_for('admin.alternar_grupo', grupo_id=grupo.id) }}">
@@ -56,10 +55,9 @@
         </td>
         <td><span class="status">{{ "Público" if grupo.publico else "Privado" }}</span></td>
         <td class="quebra"><span class="status">{{ "Restrita" if grupo.restringir_origem else "Servidor permitido" }}</span><div class="detalhe">{{ grupo.origem_permitida or "Sem origem externa" }}</div></td>
-        <td>{% if grupo.prefixo %}<code>{{ grupo.prefixo }}…</code>{% else %}—{% endif %}</td>
         <td>
           <div class="acoes acoes-grupo">
-            <a class="botao icone" href="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}" title="Editar" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg></a>
+            <a class="botao icone editar-grupo" href="{{ url_for('admin.editar_grupo', grupo_id=grupo.id) }}" title="Editar grupo" aria-label="Editar grupo {{ grupo.nome }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg></a>
             <form method="post" action="{{ url_for('admin.novo_token', grupo_id=grupo.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="icone secundario" type="submit" title="Gerar novo token" aria-label="Gerar novo token"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 9-9M17 6l3 3m-6 0 3 3"/></svg></button>
@@ -68,7 +66,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="8">Nenhum grupo cadastrado.</td></tr>
+      <tr><td colspan="6">Nenhum grupo cadastrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -81,4 +79,12 @@
 <pre><code>curl -H "Authorization: Bearer TOKEN_DO_GRUPO" \
   https://rvarjao.pythonanywhere.com/api/placares</code></pre>
 </section>
+<script>
+  document.querySelector("#grupos-cadastrados").addEventListener("click", (event) => {
+    if (event.target.closest("a, button, form") || window.getSelection()?.toString()) return;
+
+    const linha = event.target.closest(".linha-grupo");
+    linha?.querySelector(".editar-grupo").click();
+  });
+</script>
 {% endblock %}

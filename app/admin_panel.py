@@ -128,16 +128,7 @@ def salvar_integrantes(grupo_id, nomes):
 
 def listar_grupos():
     grupos = db().all("grupos", columns="*,integrantes(id,nome)", order="nome.asc")
-    tokens = db().all("tokens_api", columns="grupo_id,prefixo,ativo",
-                      filters={"ativo": "eq.1"}, order="id.desc")
-    por_grupo = {}
-    for token in tokens:
-        por_grupo.setdefault(token["grupo_id"], token)
-    return [{**grupo,
-             "integrantes": nomes_integrantes(grupo),
-             "prefixo": por_grupo.get(grupo["id"], {}).get("prefixo"),
-             "token_ativo": por_grupo.get(grupo["id"], {}).get("ativo")}
-            for grupo in grupos]
+    return [{**grupo, "integrantes": nomes_integrantes(grupo)} for grupo in grupos]
 
 
 @admin_bp.get("/")
