@@ -26,17 +26,6 @@
     <option value="0" {{ 'selected' if grupo and not grupo.ativo else '' }}>Desabilitado — bloqueia a autenticação do grupo</option>
   </select>
 </label>
-<label>Origem permitida (CORS)
-  <input name="origem_permitida" value="{{ (grupo.origem_permitida or '') if grupo else '' }}" placeholder="https://usuario.github.io">
-  <small>Protocolo, domínio e porta (se necessário), sem caminho do projeto.</small>
-</label>
-<label>Restrição de origem
-  <select name="restringir_origem">
-    <option value="0" {{ 'selected' if not grupo or not grupo.restringir_origem else '' }}>Desativada — aceita servidor a servidor</option>
-    <option value="1" {{ 'selected' if grupo and grupo.restringir_origem else '' }}>Ativada — exige a origem cadastrada</option>
-  </select>
-  <small>Mesmo desativada, CORS externo só é permitido para a origem cadastrada. Não é uma proteção contra cópia do token.</small>
-</label>
 {% if not grupo %}
 <label class="largo">Integrantes (um por linha)
   <textarea name="integrantes" rows="4" placeholder="Ana Souza&#10;Bruno Lima"></textarea>
