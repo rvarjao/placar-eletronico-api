@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, session, url_for
 from .db_supabase import db, SupabaseError
-from .cors_api import normalizar_origem
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -33,7 +32,7 @@ def autenticar_token(token):
                         filters={"token_hash": f"eq.{hash_token(token)}", "ativo": "eq.1"})
     if registro is None:
         return None
-    return db().one("grupos", columns="id,nome,turma,origem_permitida,restringir_origem",
+    return db().one("grupos", columns="id,nome,turma",
                     filters={"id": f"eq.{registro['grupo_id']}", "ativo": "eq.1"})
 
 
@@ -242,17 +241,7 @@ def dados_do_formulario():
         repositorio = normalizar_url_grupo(request.form.get("url_repositorio", ""), "repositório")
     except ValueError as exc:
         return None, None, str(exc)
-    origem = request.form.get("origem_permitida", "").strip()
-    restringir = int(request.form.get("restringir_origem") == "1")
-    if origem:
-        try:
-            origem = normalizar_origem(origem)
-        except ValueError as exc:
-            return None, None, str(exc)
-    if restringir and not origem:
-        return None, None, "Informe a origem permitida para habilitar a restrição."
     dados = {"nome": nome, "turma": turma or None, "descricao": descricao or None,
-            "origem_permitida": origem or None, "restringir_origem": restringir,
             "url": url, "publico": int(request.form.get("publico") == "1"),
             "ativo": int(request.form.get("ativo") == "1")}
     if repositorio:
@@ -315,7 +304,7 @@ def editar_grupo(grupo_id):
                 elif codigo == "23505":
                     erro = "Já existe um registro com um dos valores informados. Verifique os dados do grupo."
                 elif codigo in ("22P02", "42804"):
-                    erro = "O tipo de um campo não é compatível com o banco. Verifique os tipos das colunas ativo, publico e restringir_origem."
+                    erro = "O tipo de um campo não é compatível com o banco. Verifique os tipos das colunas ativo e publico."
                 elif codigo == "23514":
                     erro = "Um valor não atende às restrições do banco. Verifique os campos informados."
                 else:
@@ -330,8 +319,7 @@ def editar_grupo(grupo_id):
                     return redirect(url_for("admin.grupos"))
                 erro = "Grupo não encontrado ou alteração não aplicada."
         flash(erro, "erro")
-        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url", "url_repositorio", "origem_permitida")},
-                 "restringir_origem": int(request.form.get("restringir_origem") == "1"),
+        grupo = {**grupo, **{k: request.form.get(k) for k in ("nome", "turma", "descricao", "url", "url_repositorio")},
                  "publico": int(request.form.get("publico") == "1"),
                  "ativo": int(request.form.get("ativo") == "1")}
     return render_template("admin/grupo_editar.html", grupo=grupo)
